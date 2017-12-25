@@ -24,10 +24,11 @@ def parse_bot_commands(slack_events):
     for event in slack_events:
         if event["type"] == "message" and not "subtype" in event:
             print(event)
-            user_id, message, sender = parse_direct_mention(event["text"]), event["user"]
+            user_id, message = parse_direct_mention(event["text"])
+            sender = event['user']
             if user_id == pingpongbot_id:
                 return message, event["channel"], sender
-    return None, None
+    return None, None, None
 
 def parse_direct_mention(message_text):
     """
