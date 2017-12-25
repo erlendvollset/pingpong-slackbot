@@ -1,1 +1,1 @@
-web: python3 pingpong-slackbot/pingpongbot.py
+worker: python3 pingpong-slackbot/pingpongbot.py
