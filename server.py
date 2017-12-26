@@ -1,7 +1,7 @@
 from flask import Flask
 import pingpong.db_services as db_services
 
-app = Flask(__name__, static_url_path="/fe/")
+app = Flask(__name__)
 
 @app.route("/scorecard", methods=['GET'])
 def scorecard():
