@@ -1,1 +1,10 @@
-slackclient
+certifi==2017.11.5
+chardet==3.0.4
+idna==2.6
+psycopg2==2.7.3.2
+python-dateutil==1.5
+requests==2.18.4
+six==1.11.0
+slackclient==1.1.0
+urllib3==1.22
+websocket-client==0.44.0
