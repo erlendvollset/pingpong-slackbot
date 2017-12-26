@@ -1,2 +1,2 @@
-web: python3 server.py
+web: gunicorn server:app
 worker: python3 pingpongbot.py
