@@ -1,10 +1,15 @@
 from flask import Flask
-from flask import send_from_directory
+import pingpong.db_services as db_services
+
 app = Flask(__name__, static_url_path="/fe/")
 
-@app.route("/")
-def hello():
-    return send_from_directory("fe", "index.html")
+@app.route("/scorecard", methods=['GET'])
+def scorecard():
+    total_matches, scorecard = db_services.get_stats()
+    return {
+        'total_matches': total_matches,
+        'scorecard': scorecard
+    }
 
 if __name__ == "__main__":
     app.run()
