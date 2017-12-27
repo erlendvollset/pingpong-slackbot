@@ -64,7 +64,7 @@ def get_matches(limit=5):
     cursor.execute("SELECT match.id, p1.name, p2.name, match.scoreplayer1, match.scoreplayer2 from Match "
                    "LEFT JOIN (select * from player) as p1 on p1.id = match.player1 "
                    "LEFT JOIN (select * from player) as p2 on p2.id = match.player2 "
-                   "ORDER BY match.id;")
+                   "ORDER BY match.id DESC;")
     matches = cursor.fetchall()
     matches_formatted = []
     for m in matches:
