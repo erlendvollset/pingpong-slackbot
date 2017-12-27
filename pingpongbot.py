@@ -61,7 +61,10 @@ def handle_command(command, channel, sender_id):
     elif command_type == 'help':
         response = 'Here is some help.'
     elif command_type == 'name':
-        response = set_name(player, command_value)
+        if command_value:
+            response = set_name(player, command_value)
+        else:
+            response = "Your name is {}.".format(player.get_name())
     elif command_type == 'match':
         response = add_match(command_value)
     elif command_type == 'stats':
