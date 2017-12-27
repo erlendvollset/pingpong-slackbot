@@ -56,7 +56,7 @@ def handle_command(command, channel, sender_id):
 
     if player == None:
         response = init_player(sender_id)
-    if command_type == None or command_type not in COMMAND_TYPES:
+    elif command_type == None or command_type not in COMMAND_TYPES:
         response = 'Not sure what you mean. Try *{}*.'.format(EXAMPLE_COMMAND)
     elif command_type == 'help':
         response = help()
