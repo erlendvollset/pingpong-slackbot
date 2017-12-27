@@ -3,7 +3,7 @@ import psycopg2
 from collections import OrderedDict
 from urllib import parse
 from pingpong.Player import Player
-from pingpong.helpers import update_scoreboard, update_leaderboard
+from pingpong.helpers import update_scoreboard, update_leaderboard, calculate_new_elo_ratings
 
 parse.uses_netloc.append("postgres")
 url = parse.urlparse(os.environ["DATABASE_URL"])
@@ -21,25 +21,27 @@ def connect():
 
 def add_player(player):
     conn, cursor = connect()
-    cursor.execute("INSERT INTO Player (id, name) VALUES ('{}', '{}');".format(player.get_id(), player.get_name()))
+    cursor.execute("INSERT INTO Player (id, name, rating) VALUES ('{}', '{}', {});".format(player.get_id(), player.get_name(), player.get_rating()))
     conn.commit()
     conn.close()
 
-def add_match_result(player1_name, player2_name, score1, score2):
+def add_match_result(player1_name, player2_name, points1, points2):
     conn, cursor = connect()
-    success = True
-    cursor.execute("SELECT id FROM Player where name = '{}'".format(player1_name))
-    player1_id = cursor.fetchone()
-    cursor.execute("SELECT id FROM Player where name = '{}'".format(player2_name))
-    player2_id = cursor.fetchone()
-    if player1_id and player2_id and int(score1) != int(score2):
+    new_ratings = (None, None, None, None)
+    cursor.execute("SELECT id, rating FROM Player where name = '{}'".format(player1_name))
+    player1 = cursor.fetchone()
+    cursor.execute("SELECT id, rating FROM Player where name = '{}'".format(player2_name))
+    player2 = cursor.fetchone()
+    if player1 and player2 and int(points1) != int(points2):
         cursor.execute("INSERT INTO Match (player1, player2, scoreplayer1, scoreplayer2) "
-                       "VALUES ('{}', '{}', {}, {});".format(player1_id[0], player2_id[0], score1, score2))
-    else:
-        success = False
+                       "VALUES ('{}', '{}', {}, {});".format(player1[0], player2[0], points1, points2))
+        new_score1, new_score2 = calculate_new_elo_ratings(rating1=player1[1], rating2=player2[1], player1_win=int(points1) > int(points2))
+        cursor.execute("UPDATE Player SET rating = {} WHERE name = '{}'".format(new_score1, player1_name))
+        cursor.execute("UPDATE Player SET rating = {} WHERE name = '{}'".format(new_score2, player2_name))
+        new_ratings = (new_score1, new_score2, new_score1 - player1[1], new_score2 - player2[1])
     conn.commit()
     conn.close()
-    return success
+    return new_ratings
 
 
 def get_player(id):
@@ -50,14 +52,14 @@ def get_player(id):
     if result == None:
         return result
     conn.close()
-    return Player(id, result[1])
+    return Player(id, result[1], result[2])
 
 def get_all_players():
     conn, cursor = connect()
     cursor.execute("SELECT * FROM Player;")
     results = cursor.fetchall()
     conn.close()
-    return [Player(result[0], result[1]) for result in results]
+    return [Player(result[0], result[1], result[2]) for result in results]
 
 def get_matches(limit=5):
     conn, cursor = connect()
@@ -111,16 +113,16 @@ def get_leaderboard():
                    "LEFT JOIN (SELECT * FROM player) as p1 on p1.id = match.player1 "
                    "LEFT JOIN (SELECT * FROM player) as p2 on p2.id = match.player2;")
     matches = cursor.fetchall()
-    cursor.execute("SELECT name FROM player;")
-    leaderboard = [{"Rank": 0, "Name": m[0], "Wins": 0, "Losses": 0} for m in cursor.fetchall()]
+    cursor.execute("SELECT name, rating FROM player;")
+    leaderboard = [{"Rating": m[1], "Name": m[0], "W/L Ratio": 0, "Wins": 0, "Losses": 0} for m in cursor.fetchall()]
     for m in matches:
         if m[2] > m[3]:
             leaderboard = update_leaderboard(m[0], m[1], leaderboard)
         else:
             leaderboard = update_leaderboard(m[1], m[0], leaderboard)
-    leaderboard = sorted(leaderboard, key=lambda x: x['Wins'], reverse=True)
-    for i, l in enumerate(leaderboard):
-        l['Rank'] = i + 1
+    for l in leaderboard:
+        l['W/L Ratio'] = "{:.2f}".format(l['Wins'] / l['Losses'] if l['Losses'] > 0 else -1.00)
+    leaderboard = sorted(leaderboard, key=lambda x: x['Rating'], reverse=True)
     return leaderboard
 
 
@@ -134,5 +136,3 @@ def update_player_name(player, name):
     conn.commit()
     conn.close()
     return True
-
-

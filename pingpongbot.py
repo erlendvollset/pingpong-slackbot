@@ -73,7 +73,7 @@ def handle_command(command, channel, sender_id):
     slack_services.send_message(response, channel)
 
 def init_player(sender_id):
-    player = Player(sender_id, 'NoName')
+    player = Player(sender_id, 'NoName', 1000)
     db_services.add_player(player)
     return "Hi, you seem to be a new player. I've registered you in my system, but I dont have a name for you yet. " \
            "Please set your name by typing *name* <yourname>."
@@ -90,9 +90,13 @@ def add_match(match_string):
     if parsed_match_string:
         player1_name, player2_name, score1, score2 = parsed_match_string.group(1), parsed_match_string.group(2), \
                                                    parsed_match_string.group(3), parsed_match_string.group(4)
-        success = db_services.add_match_result(player1_name, player2_name, score1, score2)
-        if success:
-            return "Okay, I added the result :)"
+        new_ratings = db_services.add_match_result(player1_name, player2_name, score1, score2)
+        if new_ratings[0]:
+            return "Okay, I added the result! Your new ratings are:\n" \
+                   "{}: {} ({})\n" \
+                   "{}: {} ({})\n"\
+                .format(player1_name, new_ratings[0], ('+' if new_ratings[2] >= 0 else '') + str(new_ratings[2]),
+                        player2_name, new_ratings[1], ('+' if new_ratings[3] >= 0 else '') + str(new_ratings[3]))
         return "Hm. There seems to be something wrong with your command."
     return "That's not how you add a new match result. Type *match* <name> <name> <points> <points>."
 
@@ -108,19 +112,22 @@ def get_stats(name):
     return response
 
 def get_player_stats(name, leaderboard):
-    wins, losses = 0, 0
+    wins, losses, rating, ratio = 0, 0, 0, 0
     for l in leaderboard:
         if l['Name'] == name:
             wins = l['Wins']
             losses = l['Losses']
-    response = "Here are the stats for {}:\nWins: {}\nLosses: {}".format(name, wins, losses)
+            rating = l['Rating']
+            ratio = l['W/L Ratio']
+    response = "Here are the stats for {}:\nRating: {:.2f}\nW/L Ratio: {}\nWins: {}\nLosses: {}"\
+        .format(name, rating, ratio, wins, losses)
     response += "\n\nFor more stats go to https://pingpong-cognite.herokuapp.com/"
     return response
 
 def format_leaderboard(leaderboard):
     s = ''
-    for l in leaderboard:
-        s += '{}. {}\n'.format(l['Rank'], l['Name'])
+    for i, l in enumerate(leaderboard):
+        s += '{}. {}\n'.format(i + 1, l['Name'])
     s += "\nFor more detailed stats go to https://pingpong-cognite.herokuapp.com/"
     return s
 
