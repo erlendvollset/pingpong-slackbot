@@ -27,14 +27,20 @@ def add_player(player):
 
 def add_match_result(player1_name, player2_name, score1, score2):
     conn, cursor = connect()
+    success = True
     cursor.execute("SELECT id FROM Player where name = '{}'".format(player1_name))
-    player1_id = cursor.fetchone()[0]
+    player1_id = cursor.fetchone()
     cursor.execute("SELECT id FROM Player where name = '{}'".format(player2_name))
-    player2_id = cursor.fetchone()[0]
-    cursor.execute("INSERT INTO Match (player1, player2, scoreplayer1, scoreplayer2) "
-                   "VALUES ('{}', '{}', {}, {});".format(player1_id, player2_id, score1, score2))
+    player2_id = cursor.fetchone()
+    if player1_id and player2_id and int(score1) != int(score2):
+        cursor.execute("INSERT INTO Match (player1, player2, scoreplayer1, scoreplayer2) "
+                       "VALUES ('{}', '{}', {}, {});".format(player1_id[0], player2_id[0], score1, score2))
+    else:
+        success = False
     conn.commit()
     conn.close()
+    return success
+
 
 def get_player(id):
     conn, cursor = connect()

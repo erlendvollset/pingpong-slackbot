@@ -59,7 +59,7 @@ def handle_command(command, channel, sender_id):
     elif command_type == None or command_type not in COMMAND_TYPES:
         response = 'Not sure what you mean. Try *{}*.'.format(EXAMPLE_COMMAND)
     elif command_type == 'help':
-        response = 'Here is some help.'
+        response = help()
     elif command_type == 'name':
         if command_value:
             response = set_name(player, command_value)
@@ -90,9 +90,11 @@ def add_match(match_string):
     if parsed_match_string:
         player1_name, player2_name, score1, score2 = parsed_match_string.group(1), parsed_match_string.group(2), \
                                                    parsed_match_string.group(3), parsed_match_string.group(4)
-        db_services.add_match_result(player1_name, player2_name, score1, score2)
-        return "Okay, I added the result :)"
-    return "That's not how you add a new match result. Type *match* <playername> <playername> <points> <points>."
+        success = db_services.add_match_result(player1_name, player2_name, score1, score2)
+        if success:
+            return "Okay, I added the result :)"
+        return "Hm. There seems to be something wrong with your command."
+    return "That's not how you add a new match result. Type *match* <name> <name> <points> <points>."
 
 def get_stats(name):
     leaderboard = db_services.get_leaderboard()
@@ -122,6 +124,13 @@ def format_leaderboard(leaderboard):
     s += "\nFor more detailed stats go to https://pingpong-cognite.herokuapp.com/"
     return s
 
+def help():
+    s = '*name*: Get your name.\n' \
+        '*name <newname>*: Update your name.\n' \
+        '*stats*: Get ping pong statistics.\n' \
+        '*stats <name>*: Get stats for a specific player.\n' \
+        '*match <name> <name> <points> <points>*: Add a new match result.'
+    return s
 
 if __name__ == "__main__":
     if slack_services.slack_client.rtm_connect(with_team_state=False):
