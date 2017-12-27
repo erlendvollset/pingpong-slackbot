@@ -92,27 +92,31 @@ def add_match(match_string):
     return "That's not how you add a new match result. Type *match* <playername> <playername> <points> <points>."
 
 def get_stats(name):
+    leaderboard = db_services.get_leaderboard()
     if name:
-        response = get_player_stats(name)
+        response = get_player_stats(name, leaderboard)
     else:
-        total_matches, scoreboard = db_services.get_stats()
-        printable_scoreboard = format_scoreboard(scoreboard)
+        total_matches, _ = db_services.get_stats()
+        printable_leaderboard = format_leaderboard(leaderboard)
         response = "Total Matches played: {}\n" \
-                   "{}".format(total_matches, printable_scoreboard)
+                   "{}".format(total_matches, printable_leaderboard)
     return response
 
-def get_player_stats(name):
-    player_stats = db_services.get_player_stats(name)
-    response = "Here are the stats for {}.".format(name)
+def get_player_stats(name, leaderboard):
+    wins, losses = 0, 0
+    for l in leaderboard:
+        if l['Name'] == name:
+            wins = l['Wins']
+            losses = l['Losses']
+    response = "Here are the stats for {}:\nWins: {}\nLosses: {}".format(name, wins, losses)
+    response += "\n\nFor more stats go to https://pingpong-cognite.herokuapp.com/"
+    return response
 
-def format_scoreboard(scoreboard):
-    s = ("{:^15}|" * len(scoreboard.keys())) + " {:20}".format('') + "\n"
-    s = s.format(*([s[0] for s in list(scoreboard.keys())]))
-    for row in scoreboard:
-        s_row = ("{:^15}|" * len(scoreboard.items())) + " {:20}".format(row)  + "\n"
-        s_row = s_row.format(*([i[1] if row != i[0] else 'x' for i in list(scoreboard[row].items())]))
-        s += s_row
-    print(s)
+def format_leaderboard(leaderboard):
+    s = ''
+    for l in leaderboard:
+        s += '{}. {}\n'.format(l['Rank'], l['Name'])
+    s += "\nFor more detailed stats go to https://pingpong-cognite.herokuapp.com/"
     return s
 
 

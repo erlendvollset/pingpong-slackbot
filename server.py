@@ -1,17 +1,33 @@
 from flask import Flask
-from flask import jsonify
 import pingpong.db_services as db_services
+import json
 
 app = Flask(__name__)
 
-@app.route("/scorecard", methods=['GET'])
+@app.route("/scoreboard", methods=['GET'])
 def scorecard():
-    total_matches, scorecard = db_services.get_stats()
+    total_matches, scoreboard = db_services.get_stats()
     response = {
         'total_matches': total_matches,
-        'scorecard': scorecard
+        'scoreboard': scoreboard
     }
-    return jsonify(response)
+    return json.dumps(response)
+
+@app.route("/leaderboard", methods=['GET'])
+def leaderboard():
+    leaderboard = db_services.get_leaderboard()
+    response = {
+        'leaderboard': leaderboard
+    }
+    return json.dumps(response)
+
+@app.route("/matches", methods=['GET'])
+def matches():
+    matches = db_services.get_matches()
+    response = {
+        'matches': matches
+    }
+    return json.dumps(response)
 
 if __name__ == "__main__":
     app.run()
