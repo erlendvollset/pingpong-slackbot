@@ -8,6 +8,7 @@ idna==2.6
 itsdangerous==0.24
 Jinja2==2.10
 MarkupSafe==1.0
+newrelic==2.98.0.81
 psycopg2==2.7.3.2
 python-dateutil==1.5
 requests==2.18.4
