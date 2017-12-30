@@ -85,18 +85,24 @@ def set_name(player, name):
     return "That name already exists. Please choose another one."
 
 def add_match(match_string):
-    match_regex = '(.*) (.*) (\d*)[ |-](\d*)'
+    match_regex = '(\S+) ((?:nd )?)(\S+) ((?:nd )?)(\d*)[ |-](\d*)'
     parsed_match_string = re.match(match_regex, match_string)
+    print(match_string)
+    print(parsed_match_string.groups())
     if parsed_match_string:
-        player1_name, player2_name, score1, score2 = parsed_match_string.group(1), parsed_match_string.group(2), \
-                                                   parsed_match_string.group(3), parsed_match_string.group(4)
-        new_ratings = db_services.add_match_result(player1_name, player2_name, score1, score2)
+        player1_name, nondom1, player2_name, nondom2, score1, score2 = parsed_match_string.group(1), \
+                                                                       parsed_match_string.group(2).strip(), \
+                                                                       parsed_match_string.group(3), \
+                                                                       parsed_match_string.group(4).strip(), \
+                                                                       parsed_match_string.group(5), \
+                                                                       parsed_match_string.group(6)
+        new_ratings = db_services.add_match_result(player1_name, nondom1 == 'nd', player2_name, nondom2 == 'nd', score1, score2)
         if new_ratings[0]:
             return "Okay, I added the result! Your new ratings are:\n" \
                    "{}: {} ({})\n" \
                    "{}: {} ({})\n"\
-                .format(player1_name, new_ratings[0], ('+' if new_ratings[2] >= 0 else '') + str(new_ratings[2]),
-                        player2_name, new_ratings[1], ('+' if new_ratings[3] >= 0 else '') + str(new_ratings[3]))
+                .format(player1_name + ('(nd)' if nondom1 == 'nd' else ''), new_ratings[0], ('+' if new_ratings[2] >= 0 else '') + str(new_ratings[2]),
+                        player2_name + ('(nd)' if nondom2 == 'nd' else ''), new_ratings[1], ('+' if new_ratings[3] >= 0 else '') + str(new_ratings[3]))
         return "Hm. There seems to be something wrong with your command."
     return "That's not how you add a new match result. Type *match* <name> <name> <points> <points>."
 
@@ -132,11 +138,13 @@ def format_leaderboard(leaderboard):
     return s
 
 def help():
-    s = '*name*: Get your name.\n' \
+    s = '*match <name> <name> <points> <points>*: Add a new match result.\n' \
+        '*name*: Get your name.\n' \
         '*name <newname>*: Update your name.\n' \
         '*stats*: Get ping pong statistics.\n' \
-        '*stats <name>*: Get stats for a specific player.\n' \
-        '*match <name> <name> <points> <points>*: Add a new match result.'
+        '*stats <name>*: Get stats for a specific player.\n\n' \
+        'Add a nondominant-hand modifier (nd) behind a name in a *match* command to signalize that a nondominant hand was used\n' \
+        'Example: *match erlend nd ola 11 0*'
     return s
 
 if __name__ == "__main__":

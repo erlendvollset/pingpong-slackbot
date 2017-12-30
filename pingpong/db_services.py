@@ -21,23 +21,31 @@ def connect():
 
 def add_player(player):
     conn, cursor = connect()
-    cursor.execute("INSERT INTO Player (id, name, rating) VALUES ('{}', '{}', {});".format(player.get_id(), player.get_name(), player.get_rating()))
+    cursor.execute("INSERT INTO Player (id, name, rating) VALUES ('{}', '{}', {});"
+                   .format(player.get_id(), player.get_name(), player.get_rating()))
+    cursor.execute("INSERT INTO Player (id, name, rating) VALUES ('{}(nd)', '{}(nd)', {});"
+                   .format(player.get_id(), player.get_name(), player.get_rating()))
     conn.commit()
     conn.close()
 
-def add_match_result(player1_name, player2_name, points1, points2):
+def add_match_result(player1_name, nondom1, player2_name, nondom2, points1, points2):
     conn, cursor = connect()
     new_ratings = (None, None, None, None)
-    cursor.execute("SELECT id, rating FROM Player where name = '{}'".format(player1_name))
+    cursor.execute("SELECT id, rating, name FROM Player where name = '{}{}'".format(player1_name, '(nd)' if nondom1 else ''))
     player1 = cursor.fetchone()
-    cursor.execute("SELECT id, rating FROM Player where name = '{}'".format(player2_name))
+    cursor.execute("SELECT id, rating, name FROM Player where name = '{}{}'".format(player2_name, '(nd)' if nondom2 else ''))
     player2 = cursor.fetchone()
+    print(player1, player2)
     if player1 and player2 and int(points1) != int(points2):
         cursor.execute("INSERT INTO Match (player1, player2, scoreplayer1, scoreplayer2) "
-                       "VALUES ('{}', '{}', {}, {});".format(player1[0], player2[0], points1, points2))
+                       "VALUES ('{}', '{}', {}, {});"
+                       .format('{}'.format(player1[0]),
+                               '{}'.format(player2[0]),
+                               points1,
+                               points2))
         new_score1, new_score2 = calculate_new_elo_ratings(rating1=player1[1], rating2=player2[1], player1_win=int(points1) > int(points2))
-        cursor.execute("UPDATE Player SET rating = {} WHERE name = '{}'".format(new_score1, player1_name))
-        cursor.execute("UPDATE Player SET rating = {} WHERE name = '{}'".format(new_score2, player2_name))
+        cursor.execute("UPDATE Player SET rating = {} WHERE name = '{}'".format(new_score1, player1[2]))
+        cursor.execute("UPDATE Player SET rating = {} WHERE name = '{}'".format(new_score2, player2[2]))
         new_ratings = (new_score1, new_score2, new_score1 - player1[1], new_score2 - player2[1])
     conn.commit()
     conn.close()
@@ -122,9 +130,8 @@ def get_leaderboard():
             leaderboard = update_leaderboard(m[1], m[0], leaderboard)
     for l in leaderboard:
         l['W/L Ratio'] = "{:.2f}".format(l['Wins'] / l['Losses'] if l['Losses'] > 0 else -1.00)
-    leaderboard = sorted(leaderboard, key=lambda x: x['Rating'], reverse=True)
+    leaderboard = sorted([l for l in leaderboard if l['Wins'] + l['Losses'] > 0], key=lambda x: x['Rating'], reverse=True)
     return leaderboard
-
 
 def update_player_name(player, name):
     conn, cursor = connect()
@@ -133,6 +140,7 @@ def update_player_name(player, name):
     if name.lower() in names:
         return False
     cursor.execute("UPDATE Player SET name = '{}' WHERE id = '{}';".format(name, player.get_id()))
+    cursor.execute("UPDATE Player SET name = '{}(nd)' WHERE id = '{}(nd)';".format(name, player.get_id()))
     conn.commit()
     conn.close()
     return True
