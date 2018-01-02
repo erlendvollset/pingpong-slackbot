@@ -8,9 +8,11 @@ idna==2.6
 itsdangerous==0.24
 Jinja2==2.10
 MarkupSafe==1.0
-newrelic==2.98.0.81
+numpy==1.13.3
+pandas==0.21.1
 psycopg2==2.7.3.2
-python-dateutil==1.5
+python-dateutil==2.6.1
+pytz==2017.3
 requests==2.18.4
 six==1.11.0
 slackclient==1.1.0
