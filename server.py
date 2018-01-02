@@ -23,16 +23,6 @@ def scorecard():
     }
     return json.dumps(response)
 
-@app.route("/scoreboard", methods=['GET'])
-@cross_origin()
-def scorecard():
-    total_matches, scoreboard = db_services.get_stats()
-    response = {
-        'total_matches': total_matches,
-        'scoreboard': scoreboard
-    }
-    return json.dumps(response)
-
 @app.route("/leaderboard", methods=['GET'])
 @cross_origin()
 def leaderboard():
