@@ -144,7 +144,8 @@ def help():
         '*stats*: Get ping pong statistics.\n' \
         '*stats <name>*: Get stats for a specific player.\n\n' \
         'Add a nondominant-hand modifier (nd) behind a name in a *match* command to signalize that a nondominant hand was used\n' \
-        'Example: *match erlend nd ola 11 0*'
+        'Example: *match erlend nd ola 11 0*\n\n' \
+        'To see the Cognite Ping Pong Leaderboard go to https://pingpong-cognite.herokuapp.com/'
     return s
 
 if __name__ == "__main__":
