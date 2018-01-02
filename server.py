@@ -7,6 +7,22 @@ app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 
+@app.route("/hello", methods=['GET'])
+@cross_origin()
+def hello():
+    response = {'message': 'hello'}
+    return json.dumps(response)
+
+@app.route("/scoreboard", methods=['GET'])
+@cross_origin()
+def scorecard():
+    total_matches, scoreboard = db_services.get_stats()
+    response = {
+        'total_matches': total_matches,
+        'scoreboard': scoreboard
+    }
+    return json.dumps(response)
+
 @app.route("/scoreboard", methods=['GET'])
 @cross_origin()
 def scorecard():
