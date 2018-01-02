@@ -133,7 +133,7 @@ def get_player_stats(name, leaderboard):
 def format_leaderboard(leaderboard):
     s = ''
     for i, l in enumerate(leaderboard):
-        s += '{}. {}\n'.format(i + 1, l['Name'])
+        s += '{}. {} ({})\n'.format(i + 1, l['Name'], l['Rating'])
     s += "\nFor more detailed stats go to https://pingpong-cognite.herokuapp.com/"
     return s
 
