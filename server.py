@@ -16,6 +16,14 @@ def root():
 def serve_static(path):
     return send_from_directory("/frontend/dist", path)
 
+@app.route('/static/js/<path:path>')
+def serve_static_js(path):
+    return send_from_directory("frontend/dist/static/js", path)
+
+@app.route('/static/css/<path:path>')
+def serve_static_css(path):
+    return send_from_directory("frontend/dist/static/css", path)
+
 @app.route("/hello", methods=['GET'])
 @cross_origin()
 def hello():
