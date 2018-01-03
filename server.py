@@ -8,6 +8,7 @@ app = Flask(__name__, static_url_path="/frontend/dist")
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 
+
 @app.route('/')
 def root():
     return send_from_directory("/frontend/dist", "index.html")
