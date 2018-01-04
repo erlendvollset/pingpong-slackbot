@@ -1,7 +1,9 @@
+import json
+
 from flask import Flask
 from flask_cors import CORS, cross_origin
-import pingpong.db_services as db_services
-import json
+
+import pingpong.services.db_services as db_services
 
 app = Flask(__name__)
 cors = CORS(app)

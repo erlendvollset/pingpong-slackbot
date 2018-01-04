@@ -1,9 +1,10 @@
 import re
 import time
-import pingpong.db_services as db_services
-import pingpong.slack_services as slack_services
 
-from pingpong.Player import Player
+import pingpong.services.db_services as db_services
+from pingpong.models.Player import Player
+
+import pingpong.services.slack_services as slack_services
 
 # starterbot's user ID in Slack: value is assigned after the bot starts up
 pingpongbot_id = None
