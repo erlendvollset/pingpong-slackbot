@@ -62,7 +62,7 @@ def handle_command(command, channel, sender_id):
         response = help()
     elif command_type == 'name':
         if command_value:
-            response = set_name(player, command_value)
+            response = set_name(player, command_value.lower())
         else:
             response = "Your name is {}.".format(player.get_name())
     elif command_type == 'match':
@@ -90,9 +90,9 @@ def add_match(match_string):
     print(match_string)
     print(parsed_match_string.groups())
     if parsed_match_string:
-        player1_name, nondom1, player2_name, nondom2, score1, score2 = parsed_match_string.group(1), \
+        player1_name, nondom1, player2_name, nondom2, score1, score2 = parsed_match_string.group(1).lower(), \
                                                                        parsed_match_string.group(2).strip(), \
-                                                                       parsed_match_string.group(3), \
+                                                                       parsed_match_string.group(3).lower(), \
                                                                        parsed_match_string.group(4).strip(), \
                                                                        parsed_match_string.group(5), \
                                                                        parsed_match_string.group(6)
@@ -103,13 +103,13 @@ def add_match(match_string):
                    "{}: {} ({})\n"\
                 .format(player1_name + ('(nd)' if nondom1 == 'nd' else ''), new_ratings[0], ('+' if new_ratings[2] >= 0 else '') + str(new_ratings[2]),
                         player2_name + ('(nd)' if nondom2 == 'nd' else ''), new_ratings[1], ('+' if new_ratings[3] >= 0 else '') + str(new_ratings[3]))
-        return "Hm. There seems to be something wrong with your command."
+        return "Hm. There seems to be something wrong with your input."
     return "That's not how you add a new match result. Type *match* <name> <name> <points> <points>."
 
 def get_stats(name):
     leaderboard = db_services.get_leaderboard()
     if name:
-        response = get_player_stats(name, leaderboard)
+        response = get_player_stats(name.lower(), leaderboard)
     else:
         total_matches, _ = db_services.get_stats()
         printable_leaderboard = format_leaderboard(leaderboard)
