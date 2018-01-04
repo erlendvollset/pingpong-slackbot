@@ -130,7 +130,7 @@ def get_leaderboard():
             leaderboard = update_leaderboard(m[1], m[0], leaderboard)
     for l in leaderboard:
         l['W/L Ratio'] = '{:.2f}'.format(l['Wins'] / l['Losses']) if l['Losses'] > 0 else '∞'
-    leaderboard = sorted([l for l in leaderboard if l['Wins'] + l['Losses'] > 0], key=lambda x: x['Rating'], reverse=True)
+    leaderboard = sorted([l for l in leaderboard if l['Wins'] + l['Losses'] > 0], key=lambda x: (x['Rating'], x['Wins']), reverse=True)
     return leaderboard
 
 def update_player_name(player, name):
