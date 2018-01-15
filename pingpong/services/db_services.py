@@ -38,7 +38,7 @@ def add_match_result(player1_name, nondom1, player2_name, nondom2, points1, poin
     cursor.execute("SELECT id, rating, name FROM Player where name = '{}{}'".format(player2_name, '(nd)' if nondom2 else ''))
     player2 = cursor.fetchone()
     print(player1, player2)
-    if player1 and player2 and int(points1) != int(points2):
+    if player1 and player2 and int(points1) != int(points2) and player1_name != player2_name:
         cursor.execute("INSERT INTO Match (player1, player2, scoreplayer1, scoreplayer2) "
                        "VALUES ('{}', '{}', {}, {});"
                        .format('{}'.format(player1[0]),
