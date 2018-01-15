@@ -98,7 +98,7 @@ def add_match(match_string):
                                                                        parsed_match_string.group(5), \
                                                                        parsed_match_string.group(6)
         new_ratings = db_services.add_match_result(player1_name, nondom1 == 'nd', player2_name, nondom2 == 'nd', score1, score2)
-        if new_ratings[0]:
+        if new_ratings[0] and player1_name != player2_name:
             return "Okay, I added the result! Your new ratings are:\n" \
                    "{}: {} ({})\n" \
                    "{}: {} ({})\n"\
