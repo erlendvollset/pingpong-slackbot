@@ -88,8 +88,6 @@ def set_name(player, name):
 def add_match(match_string):
     match_regex = '(\S+) ((?:nd )?)(\S+) ((?:nd )?)(\d*)[ |-](\d*)'
     parsed_match_string = re.match(match_regex, match_string)
-    print(match_string)
-    print(parsed_match_string.groups())
     if parsed_match_string:
         player1_name, nondom1, player2_name, nondom2, score1, score2 = parsed_match_string.group(1).lower(), \
                                                                        parsed_match_string.group(2).strip(), \
