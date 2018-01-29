@@ -1,9 +1,12 @@
 import json
+import os
+import sys
+sys.path.append(os.path.dirname(__file__))
 
 from flask import Flask
 from flask_cors import CORS, cross_origin
 
-import pingpong.services.db_services as db_services
+import services.db_services as db_services
 
 app = Flask(__name__)
 cors = CORS(app)

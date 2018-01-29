@@ -3,9 +3,9 @@ from collections import OrderedDict
 from urllib import parse
 
 import psycopg2
-from pingpong.utils.helpers import update_scoreboard, update_leaderboard, calculate_new_elo_ratings
+from models.Player import Player
 
-from pingpong.models.Player import Player
+from utils.helpers import update_scoreboard, update_leaderboard, calculate_new_elo_ratings
 
 parse.uses_netloc.append("postgres")
 url = parse.urlparse(os.environ["DATABASE_URL"])

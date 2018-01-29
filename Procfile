@@ -1,2 +1,2 @@
-web: gunicorn server:app
-worker: python3 slackbot.py
+web: gunicorn src.server:app
+worker: python3 src/slackbot.py
