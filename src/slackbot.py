@@ -85,7 +85,7 @@ def set_name(player, name):
     return "That name already exists. Please choose another one."
 
 def add_match(match_string):
-    match_regex = '(\S+) ((?:nd )?)(\S+) ((?:nd )?)(\d*)[ |-](\d*)'
+    match_regex = '(\S+) ((?:nd )?)(\S+) ((?:nd )?)(\d+)[ |-](\d+)'
     parsed_match_string = re.match(match_regex, match_string)
     if parsed_match_string:
         player1_name, nondom1, player2_name, nondom2, score1, score2 = parsed_match_string.group(1).lower(), \
