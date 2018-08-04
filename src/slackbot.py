@@ -159,8 +159,8 @@ def format_leaderboard(leaderboard):
 
 def help():
     s = '*match @<name> @<name> <points> <points>*: Add a new match result.\n' \
-        '*name*: Get your name.\n' \
-        '*name <newname>*: Update your name.\n' \
+        '*name*: Get your display name.\n' \
+        '*name <newname>*: Update your display name.\n' \
         '*stats*: Get ping pong statistics.\n' \
         '*stats <name>*: Get stats for a specific player.\n' \
         '*undo*: Undo the last match registered.\n\n' \
