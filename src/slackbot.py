@@ -165,7 +165,7 @@ def help():
         '*stats <name>*: Get stats for a specific player.\n' \
         '*undo*: Undo the last match registered.\n\n' \
         'Add a nondominant-hand modifier (nd) behind a name in a *match* command to signalize that a nondominant hand was used\n' \
-        'Example: *match @erlend.vollset @ola.liabotro 11 0*\n\n' \
+        'Example: *match @erlend.vollset nd @ola.liabotro 11 0*\n\n' \
         'To see the Cognite Ping Pong Leaderboard go to https://pingpong-cognite.herokuapp.com/'
     return s
 
