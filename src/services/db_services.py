@@ -137,8 +137,8 @@ def get_leaderboard():
                    "LEFT JOIN (SELECT * FROM player) as p2 on p2.id = match.player2;")
     matches = cursor.fetchall()
     cursor.execute("SELECT name, rating FROM player;")
-    conn.close()
     leaderboard = [{"Rating": m[1], "Name": m[0], "W/L Ratio": 0, "Wins": 0, "Losses": 0} for m in cursor.fetchall()]
+    conn.close()
     for m in matches:
         if m[2] > m[3]:
             leaderboard = update_leaderboard(m[0], m[1], leaderboard)
