@@ -1,8 +1,8 @@
 import re
 import time
 
-import services.db_services as db_services
-import services.slack_services as slack_services
+from services import db_services
+from services import slack_services
 from models.Player import Player
 
 # starterbot's user ID in Slack: value is assigned after the bot starts up
@@ -10,9 +10,9 @@ pingpongbot_id = None
 
 # constants
 RTM_READ_DELAY = 1 # 1 second delay between reading from RTM
-MENTION_REGEX = "^<@(|[WU].+)>(.*)"
+MENTION_REGEX = "^<@([A-Z0-9]{9})>(.*)"
 COMMAND_REGEX = "([a-zA-Z]*)( .*)?"
-COMMAND_TYPES = ['name', 'help', 'match', 'stats']
+COMMAND_TYPES = ['name', 'help', 'match', 'stats', 'undo']
 
 EXAMPLE_COMMAND = "help"
 
@@ -23,7 +23,6 @@ def parse_bot_commands(slack_events):
         If its not found, then this function returns None, None.
     """
     for event in slack_events:
-        print(event)
         if event["type"] == "message" and not "subtype" in event:
             print(event)
             user_id, message = parse_direct_mention(event["text"])
@@ -69,11 +68,13 @@ def handle_command(command, channel, sender_id):
         response = add_match(command_value)
     elif command_type == 'stats':
         response = get_stats(command_value)
+    elif command_type == 'undo':
+        response = undo_last_match()
 
     slack_services.send_message(response, channel)
 
 def init_player(sender_id):
-    player = Player(sender_id, 'NoName', 1000)
+    player = Player(sender_id, sender_id, 1000)
     db_services.add_player(player)
     return "Hi, you seem to be a new player. I've registered you in my system, but I dont have a name for you yet. " \
            "Please set your name by typing *name* <yourname>."
@@ -85,16 +86,18 @@ def set_name(player, name):
     return "That name already exists. Please choose another one."
 
 def add_match(match_string):
-    match_regex = '(\S+) ((?:nd )?)(\S+) ((?:nd )?)(\d+)[ |-](\d+)'
+    match_regex = '^<@([A-Z0-9]{9})> ((?:nd )?)<@([A-Z0-9]{9})> ((?:nd )?)(\d+)[ |-](\d+)'
     parsed_match_string = re.match(match_regex, match_string)
     if parsed_match_string:
-        player1_name, nondom1, player2_name, nondom2, score1, score2 = parsed_match_string.group(1).lower(), \
+        player1_id, nondom1, player2_id, nondom2, score1, score2 = parsed_match_string.group(1), \
                                                                        parsed_match_string.group(2).strip(), \
-                                                                       parsed_match_string.group(3).lower(), \
+                                                                       parsed_match_string.group(3), \
                                                                        parsed_match_string.group(4).strip(), \
                                                                        parsed_match_string.group(5), \
                                                                        parsed_match_string.group(6)
-        new_ratings = db_services.add_match_result(player1_name, nondom1 == 'nd', player2_name, nondom2 == 'nd', score1, score2)
+        new_ratings = db_services.add_match_result(player1_id, nondom1 == 'nd', player2_id, nondom2 == 'nd', score1, score2)
+        player1_name = db_services.get_player(player1_id).get_name()
+        player2_name = db_services.get_player(player2_id).get_name()
         if new_ratings[0]:
             return "Okay, I added the result! Your new ratings are:\n" \
                    "{}: {} ({})\n" \
@@ -102,7 +105,26 @@ def add_match(match_string):
                 .format(player1_name + ('(nd)' if nondom1 == 'nd' else ''), new_ratings[0], ('+' if new_ratings[2] >= 0 else '') + str(new_ratings[2]),
                         player2_name + ('(nd)' if nondom2 == 'nd' else ''), new_ratings[1], ('+' if new_ratings[3] >= 0 else '') + str(new_ratings[3]))
         return "Hm. There seems to be something wrong with your input."
-    return "That's not how you add a new match result. Type *match* <name> <name> <points> <points>."
+    return "That's not how you add a new match result. Type *match* @<name> @<name> <points> <points>."
+
+def undo_last_match():
+    latest_match = db_services.get_matches(limit=1)[0]
+    loser_id = latest_match.get("loser_id")
+    winner_id = latest_match.get("winner_id")
+    loser_rating = latest_match.get("loser_rating")
+    winner_rating = latest_match.get("winner_rating")
+    loser_name = db_services.get_player(loser_id).get_name()
+    winner_name = db_services.get_player(winner_id).get_name()
+
+    db_services.delete_match(latest_match.get("id"))
+    db_services.update_player_rating(Player(loser_id, "whatever", loser_rating), loser_rating)
+    db_services.update_player_rating(Player(winner_id, "whatever", winner_rating), winner_rating)
+
+    return "OK, I've undone the last match. Your new ratings are:\n" \
+                   "{}: {}\n" \
+                   "{}: {}\n"\
+        .format(winner_name, winner_rating, loser_name, loser_rating)
+
 
 def get_stats(name):
     leaderboard = db_services.get_leaderboard()
@@ -136,13 +158,13 @@ def format_leaderboard(leaderboard):
     return s
 
 def help():
-    s = '*match <name> <name> <points> <points>*: Add a new match result.\n' \
+    s = '*match @<name> @<name> <points> <points>*: Add a new match result.\n' \
         '*name*: Get your name.\n' \
         '*name <newname>*: Update your name.\n' \
         '*stats*: Get ping pong statistics.\n' \
         '*stats <name>*: Get stats for a specific player.\n\n' \
         'Add a nondominant-hand modifier (nd) behind a name in a *match* command to signalize that a nondominant hand was used\n' \
-        'Example: *match erlend nd ola 11 0*\n\n' \
+        'Example: *match @erlend.vollset @ola.liabotro 11 0*\n\n' \
         'To see the Cognite Ping Pong Leaderboard go to https://pingpong-cognite.herokuapp.com/'
     return s
 
@@ -153,7 +175,7 @@ if __name__ == "__main__":
         pingpongbot_id = slack_services.slack_client.api_call("auth.test")["user_id"]
         while True:
             command, channel, sender = parse_bot_commands(slack_services.slack_client.rtm_read())
-            if command:
+            if command and channel == "D8J3CN9DX":
                 handle_command(command, channel, sender)
             time.sleep(RTM_READ_DELAY)
     else:

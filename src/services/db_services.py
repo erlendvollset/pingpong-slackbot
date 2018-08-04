@@ -30,24 +30,28 @@ def add_player(player):
     conn.commit()
     conn.close()
 
-def add_match_result(player1_name, nondom1, player2_name, nondom2, points1, points2):
+def add_match_result(player1_id, nondom1, player2_id, nondom2, points1, points2):
     conn, cursor = connect()
     new_ratings = (None, None, None, None)
-    cursor.execute("SELECT id, rating, name FROM Player where name = '{}{}'".format(player1_name, '(nd)' if nondom1 else ''))
+    player1_id = "{}{}".format(player1_id, '(nd)' if nondom1 else '')
+    player2_id = "{}{}".format(player2_id, '(nd)' if nondom2 else '')
+    cursor.execute("SELECT name, rating, id FROM Player where id = '{}'".format(player1_id))
     player1 = cursor.fetchone()
-    cursor.execute("SELECT id, rating, name FROM Player where name = '{}{}'".format(player2_name, '(nd)' if nondom2 else ''))
+    cursor.execute("SELECT name, rating, id FROM Player where id = '{}'".format(player2_id))
     player2 = cursor.fetchone()
     print(player1, player2)
-    if player1 and player2 and int(points1) != int(points2) and player1_name != player2_name:
-        cursor.execute("INSERT INTO Match (player1, player2, scoreplayer1, scoreplayer2) "
-                       "VALUES ('{}', '{}', {}, {});"
-                       .format('{}'.format(player1[0]),
-                               '{}'.format(player2[0]),
+    if player1 and player2 and int(points1) != int(points2) and player1_id != player2_id:
+        cursor.execute("INSERT INTO Match (player1, player2, scoreplayer1, scoreplayer2, player1rating, player2rating) "
+                       "VALUES ('{}', '{}', {}, {}, {}, {});"
+                       .format('{}'.format(player1_id),
+                               '{}'.format(player2_id),
                                points1,
-                               points2))
+                               points2,
+                               player1[1],
+                               player2[1]))
         new_score1, new_score2 = calculate_new_elo_ratings(rating1=player1[1], rating2=player2[1], player1_win=int(points1) > int(points2))
-        cursor.execute("UPDATE Player SET rating = {} WHERE name = '{}'".format(new_score1, player1[2]))
-        cursor.execute("UPDATE Player SET rating = {} WHERE name = '{}'".format(new_score2, player2[2]))
+        cursor.execute("UPDATE Player SET rating = {} WHERE id = '{}'".format(new_score1, player1_id))
+        cursor.execute("UPDATE Player SET rating = {} WHERE id = '{}'".format(new_score2, player2_id))
         new_ratings = (new_score1, new_score2, new_score1 - player1[1], new_score2 - player2[1])
     conn.commit()
     conn.close()
@@ -58,11 +62,12 @@ def get_player(id):
     conn, cursor = connect()
     cursor.execute("SELECT * FROM Player WHERE Id = '{}';".format(id))
     result = cursor.fetchone()
-    print(result)
-    if result == None:
-        return result
     conn.close()
-    return Player(id, result[1], result[2])
+    print(result)
+    if result:
+        return Player(id, result[1], result[2])
+    return result
+
 
 def get_all_players():
     conn, cursor = connect()
@@ -73,18 +78,25 @@ def get_all_players():
 
 def get_matches(limit=5):
     conn, cursor = connect()
-    cursor.execute("SELECT match.id, p1.name, p2.name, match.scoreplayer1, match.scoreplayer2 from Match "
+    cursor.execute("SELECT match.id, p1.id, p2.id, match.scoreplayer1, match.scoreplayer2, match.player1rating, match.player2rating from Match "
                    "LEFT JOIN (select * from player) as p1 on p1.id = match.player1 "
                    "LEFT JOIN (select * from player) as p2 on p2.id = match.player2 "
                    "ORDER BY match.id DESC;")
     matches = cursor.fetchall()
+    conn.close()
     matches_formatted = []
     for m in matches:
         if m[3] > m[4]:
-            matches_formatted.append({"winner": m[1], "score": "{}-{}".format(m[3], m[4]), "loser": m[2]})
+            matches_formatted.append({"id": m[0], "winner_id": m[1], "score": "{}-{}".format(m[3], m[4]), "loser_id": m[2], "winner_rating": m[5], "loser_rating": m[6]})
         else:
-            matches_formatted.append({"winner": m[2], "score": "{}-{}".format(m[4], m[3]), "loser": m[1]})
+            matches_formatted.append({"id": m[0], "winner_id": m[2], "score": "{}-{}".format(m[4], m[3]), "loser_id": m[1], "winner_rating": m[6], "loser_rating": m[5]})
     return matches_formatted[:limit]
+
+def delete_match(match_id):
+    conn, cursor = connect()
+    cursor.execute("DELETE FROM match WHERE id = {}".format(match_id))
+    conn.commit()
+    conn.close()
 
 
 def get_stats():
@@ -93,6 +105,7 @@ def get_stats():
                    "LEFT JOIN (select * from player) as p1 on p1.id = match.player1 "
                    "LEFT JOIN (select * from player) as p2 on p2.id = match.player2;")
     matches = cursor.fetchall()
+    conn.close()
 
     total_matches = len(matches)
 
@@ -124,6 +137,7 @@ def get_leaderboard():
                    "LEFT JOIN (SELECT * FROM player) as p2 on p2.id = match.player2;")
     matches = cursor.fetchall()
     cursor.execute("SELECT name, rating FROM player;")
+    conn.close()
     leaderboard = [{"Rating": m[1], "Name": m[0], "W/L Ratio": 0, "Wins": 0, "Losses": 0} for m in cursor.fetchall()]
     for m in matches:
         if m[2] > m[3]:
@@ -143,6 +157,13 @@ def update_player_name(player, name):
         return False
     cursor.execute("UPDATE Player SET name = '{}' WHERE id = '{}';".format(name, player.get_id()))
     cursor.execute("UPDATE Player SET name = '{}(nd)' WHERE id = '{}(nd)';".format(name, player.get_id()))
+    conn.commit()
+    conn.close()
+    return True
+
+def update_player_rating(player, new_rating):
+    conn, cursor = connect()
+    cursor.execute("UPDATE Player SET rating = {} WHERE id = '{}';".format(new_rating, player.get_id()))
     conn.commit()
     conn.close()
     return True
