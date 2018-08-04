@@ -147,14 +147,12 @@ def get_player_stats(name, leaderboard):
             ratio = l['W/L Ratio']
     response = "Here are the stats for {}:\nRating: {:.2f}\nW/L Ratio: {}\nWins: {}\nLosses: {}"\
         .format(name, rating, ratio, wins, losses)
-    response += "\n\nFor more stats go to https://pingpong-cognite.herokuapp.com/"
     return response
 
 def format_leaderboard(leaderboard):
     s = ''
     for i, l in enumerate(leaderboard):
         s += '{}. {} ({})\n'.format(i + 1, l['Name'], l['Rating'])
-    s += "\nFor more detailed stats go to https://pingpong-cognite.herokuapp.com/"
     return s
 
 def help():
@@ -165,8 +163,7 @@ def help():
         '*stats <name>*: Get stats for a specific player.\n' \
         '*undo*: Undo the last match registered.\n\n' \
         'Add a nondominant-hand modifier (nd) behind a name in a *match* command to signalize that a nondominant hand was used\n' \
-        'Example: *match @erlend.vollset nd @ola.liabotro 11 0*\n\n' \
-        'To see the Cognite Ping Pong Leaderboard go to https://pingpong-cognite.herokuapp.com/'
+        'Example: *match @erlend.vollset nd @ola.liabotro 11 0*'
     return s
 
 if __name__ == "__main__":
