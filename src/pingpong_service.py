@@ -86,9 +86,17 @@ def undo_last_match():
 def get_leaderboard():
     conn, cursor = db.connect()
     players = db.get_players(cursor)
+    matches = db.get_matches(cursor)
+    active_players = [p for p in players if __has_played_match(matches, p)]
+    printable_leaderboard = "\n".join(["{}. {} ({})".format(i + 1, p.get_name(), p.get_rating()) for i, p in enumerate(active_players)])
     conn.close()
-    printable_leaderboard = "\n".join(["{}. {} ({})".format(i + 1, p.get_name(), p.get_rating()) for i, p in enumerate(players)])
     return printable_leaderboard
+
+def __has_played_match(matches, player):
+    for match in matches:
+        if match.player1_id == player.get_id() or match.player2_id == player.get_id():
+            return True
+    return False
 
 def get_total_matches():
     conn, cursor = db.connect()
