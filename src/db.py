@@ -5,7 +5,6 @@ from urllib import parse
 import psycopg2
 
 from models import Player, Match
-import util
 
 parse.uses_netloc.append("postgres")
 url = parse.urlparse(os.environ["DATABASE_URL"])
@@ -27,7 +26,7 @@ def create_player(cursor, player: Player):
     cursor.execute("INSERT INTO Player (id, name, rating) VALUES ('{}(nd)', '{}(nd)', {});"
                    .format(player.get_id(), player.get_name(), player.get_rating()))
 
-def get_players(cursor, ids: List[int] = None):
+def get_players(cursor, ids: List[str] = None):
     if ids:
         cursor.execute("SELECT * from Player WHERE id in ({}) ORDER BY rating DESC;".format(", ".join(["'{}'".format(id) for id in ids])))
     else:
@@ -35,10 +34,10 @@ def get_players(cursor, ids: List[int] = None):
     res = cursor.fetchall()
     return [Player(*p) for p in res]
 
-def delete_players(cursor, ids: List[int]):
+def delete_players(cursor, ids: List[str]):
     cursor.execute("DELETE FROM Player WHERE id in ({})".format(", ".join(["'{}'".format(id) for id in ids])))
 
-def update_player(cursor, id: int, new_name=None, new_rating=None) -> bool:
+def update_player(cursor, id: str, new_name=None, new_rating=None) -> bool:
     if new_name:
         cursor.execute("UPDATE Player SET name = '{}' WHERE id = '{}';".format(new_name, id))
         cursor.execute("UPDATE Player SET name = '{}(nd)' WHERE id = '{}(nd)';".format(new_name, id))

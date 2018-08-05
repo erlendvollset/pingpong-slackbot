@@ -5,12 +5,15 @@ import time
 import pingpong_service
 
 from slackclient import SlackClient
+import responses
 
 # instantiate Slack client
 slack_client = SlackClient(os.getenv('SLACK_BOT_TOKEN'))
 
 # starterbot's user ID in Slack: value is assigned after the bot starts up
 pingpongbot_id = None
+ping_pong_channel_id = "C8MAMM6AC"
+admin_channel_id = "D8J3CN9DX"
 
 # constants
 RTM_READ_DELAY = 1 # 1 second delay between reading from RTM
@@ -49,7 +52,7 @@ def parse_direct_mention(message_text):
     # the first group contains the username, the second group contains the remaining message
     return (matches.group(1), matches.group(2).strip()) if matches else (None, None)
 
-def handle_command(command, channel, sender_id):
+def handle_command(command, sender_id):
     """
         Executes bot command if the command is known
     """
@@ -59,36 +62,40 @@ def handle_command(command, channel, sender_id):
         command_type = parsed_command.group(1)
         if parsed_command.group(2):
             command_value = parsed_command.group(2).strip()
-
-    player = pingpong_service.get_player(sender_id)
-    if not player:
+    try:
+        player = pingpong_service.get_player(sender_id)
+    except pingpong_service.PlayerDoesNotExist:
         pingpong_service.add_new_player(sender_id)
-        response = "Hi, you seem to be a new player. I've registered you in my system, but I dont have a name for " \
-                   "you yet. Please set your name by typing `@pingpong name <yourname>`."
-    elif command_type == None or command_type not in COMMAND_TYPES:
-        response = 'Not sure what you mean. Try *help*.'
-    elif command_type == 'help':
-        response = help()
-    elif command_type == 'name':
+        return responses.new_player()
+
+    if command_type == 'help':
+        return responses.help()
+    if command_type == 'name':
         if command_value:
             success = pingpong_service.update_display_name(player, command_value.lower())
             if success:
-                response = "Ok, {}. I've updated your name.".format(command_value.lower())
+                return responses.name_updated(command_value.lower())
             else:
-                response = "Sorry. That name is taken."
+                return responses.name_taken()
         else:
-            response = "Your name is {}.".format(player.get_name())
-    elif command_type == 'match':
-        response = handle_match_command(command_value)
-    elif command_type == 'stats':
-        response = handle_stats_command(command_value)
-    elif command_type == 'undo':
+            return responses.name(player.get_name())
+    if command_type == 'match':
+        return handle_match_command(command_value)
+    if command_type == 'stats':
+        name = command_value
+        if name:
+            try:
+                rating, wins, losses, ratio = pingpong_service.get_player_stats(name)
+                return responses.player_stats(name, rating, ratio, wins, losses)
+            except pingpong_service.PlayerDoesNotExist:
+                return responses.player_does_not_exist()
+        else:
+            return responses.stats(pingpong_service.get_total_matches(), pingpong_service.get_leaderboard())
+    if command_type == 'undo':
         w_name, w_rating, l_name, l_rating = pingpong_service.undo_last_match()
-        response = "OK, I've undone the last match. Your new ratings are:\n" \
-        "{}: {}\n" \
-        "{}: {}\n" \
-            .format(w_name, w_rating, l_name, l_rating)
-    send_slack_message(response, channel)
+        return responses.match_undone(w_name, w_rating, l_name, l_rating)
+
+    return responses.unkown_command()
 
 def handle_match_command(match_string):
     match_regex = '^<@([A-Z0-9]{9})> ((?:nd )?)<@([A-Z0-9]{9})> ((?:nd )?)(\d+)[ |-](\d+)'
@@ -100,41 +107,21 @@ def handle_match_command(match_string):
                                                                        parsed_match_string.group(4).strip(), \
                                                                        parsed_match_string.group(5), \
                                                                        parsed_match_string.group(6)
-        updated_players = pingpong_service.add_match(player1_id, nondom1 == "nd", player2_id, nondom2 == "nd", score1, score2)
+        try:
+            updated_players = pingpong_service.add_match(player1_id, nondom1 == "nd", player2_id, nondom2 == "nd", score1, score2)
+        except pingpong_service.PlayerDoesNotExist:
+            return responses.player_does_not_exist()
+        except pingpong_service.InvalidMatchRegistration:
+            return responses.invalid_match_registration()
         if updated_players:
             p1 = updated_players[0]
             p1_rating_diff = updated_players[1]
             p2 = updated_players[2]
             p2_rating_diff = updated_players[3]
-            return "Okay, I added the result! Your new ratings are:\n" \
-                   "{}: {} ({})\n" \
-                   "{}: {} ({})\n"\
-                .format(p1.get_name(), p1.get_rating(), ('+' if p1_rating_diff >= 0 else '') + str(p1_rating_diff),
+            return responses.match_added(p1.get_name(), p1.get_rating(), ('+' if p1_rating_diff >= 0 else '') + str(p1_rating_diff),
                         p2.get_name(), p2.get_rating(), ('+' if p2_rating_diff >= 0 else '') + str(p2_rating_diff))
-        return "Hm. There seems to be something wrong with your input."
-    return "That's not how you add a new match result. Type *match* @<name> @<name> <points> <points>."
+    return responses.invalid_match_command()
 
-
-def handle_stats_command(name):
-    if name:
-        rating, wins, losses, ratio = pingpong_service.get_player_stats(name)
-        response = "Here are the stats for {}:\nRating: {:.2f}\nW/L Ratio: {}\nWins: {}\nLosses: {}" \
-            .format(name, rating, ratio, wins, losses)
-    else:
-        response = "Total Matches played: {}\n" \
-                   "{}".format(pingpong_service.get_total_matches(), pingpong_service.get_leaderboard())
-    return response
-
-def help():
-    s = '*match @<name> @<name> <points> <points>*: Add a new match result.\n' \
-        '*name*: Get your display name.\n' \
-        '*name <newname>*: Update your display name.\n' \
-        '*stats*: Get ping pong statistics.\n' \
-        '*stats <name>*: Get stats for a specific player.\n' \
-        '*undo*: Undo the last match registered.\n\n' \
-        'Add a nondominant-hand modifier (nd) behind a name in a *match* command to signalize that a nondominant hand was used\n' \
-        'Example: *match @erlend.vollset nd @ola.liabotro 11 0*'
-    return s
 
 if __name__ == "__main__":
     if slack_client.rtm_connect(with_team_state=False):
@@ -143,8 +130,9 @@ if __name__ == "__main__":
         pingpongbot_id = slack_client.api_call("auth.test")["user_id"]
         while True:
             command, channel, sender = parse_bot_commands(slack_client.rtm_read())
-            if command and channel == "C8MAMM6AC":
-                handle_command(command, channel, sender)
+            if command and channel == ping_pong_channel_id:
+                response = handle_command(command, sender)
+                send_slack_message(response, channel)
             time.sleep(RTM_READ_DELAY)
     else:
         print("Connection failed. Exception traceback printed above.")

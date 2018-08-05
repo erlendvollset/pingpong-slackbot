@@ -14,7 +14,7 @@ def get_player(player_id):
     conn.close()
     if players:
         return players[0]
-    return None
+    raise PlayerDoesNotExist()
 
 def update_display_name(player, new_name):
     conn, cursor = db.connect()
@@ -29,7 +29,7 @@ def update_display_name(player, new_name):
 
 def add_match(p1_id, nd1, p2_id, nd2, score_p1, score_p2):
     if p1_id == p2_id or int(score_p1) == int(score_p2):
-        return None
+        raise InvalidMatchRegistration()
 
     p1_id += "(nd)" if nd1 else ""
     p1 = get_player(p1_id)
@@ -53,7 +53,7 @@ def add_match(p1_id, nd1, p2_id, nd2, score_p1, score_p2):
 
         updated_players = (new_p1, new_rating1 - p1.get_rating(), new_p2, new_rating2 - p2.get_rating())
         return updated_players
-    return None
+    raise PlayerDoesNotExist()
 
 def undo_last_match():
     conn, cursor = db.connect()
@@ -99,7 +99,10 @@ def get_total_matches():
 def get_player_stats(name):
     conn, cursor = db.connect()
     players = db.get_players(cursor)
-    player = next(player for player in players if player.name == name)
+    try:
+        player = next(player for player in players if player.name == name)
+    except StopIteration:
+        raise PlayerDoesNotExist()
     wins = 0
     losses = 0
     matches = db.get_matches(cursor)
@@ -130,3 +133,8 @@ def calculate_new_elo_ratings(rating1, rating2, player1_win):
 
 
 
+class PlayerDoesNotExist(Exception):
+    pass
+
+class InvalidMatchRegistration(Exception):
+    pass
