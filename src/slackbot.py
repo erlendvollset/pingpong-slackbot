@@ -1,9 +1,13 @@
+import os
 import re
 import time
 
-from services import db_services
-from services import slack_services
-from models.Player import Player
+import pingpong_service
+
+from slackclient import SlackClient
+
+# instantiate Slack client
+slack_client = SlackClient(os.getenv('SLACK_BOT_TOKEN'))
 
 # starterbot's user ID in Slack: value is assigned after the bot starts up
 pingpongbot_id = None
@@ -14,7 +18,12 @@ MENTION_REGEX = "^<@([A-Z0-9]{9})>(.*)"
 COMMAND_REGEX = "([a-zA-Z]*)( .*)?"
 COMMAND_TYPES = ['name', 'help', 'match', 'stats', 'undo']
 
-EXAMPLE_COMMAND = "help"
+def send_slack_message(message, channel):
+    slack_client.api_call(
+        "chat.postMessage",
+        channel=channel or 'G8JKTFJ6Q',
+        text=message
+    )
 
 def parse_bot_commands(slack_events):
     """
@@ -44,8 +53,6 @@ def handle_command(command, channel, sender_id):
     """
         Executes bot command if the command is known
     """
-
-    player = db_services.get_player(sender_id)
     parsed_command = re.match(COMMAND_REGEX, command)
     command_type, command_value = None, None
     if parsed_command:
@@ -53,15 +60,22 @@ def handle_command(command, channel, sender_id):
         if parsed_command.group(2):
             command_value = parsed_command.group(2).strip()
 
-    if player == None:
-        response = init_player(sender_id)
+    player = pingpong_service.get_player(sender_id)
+    if not player:
+        pingpong_service.add_new_player(sender_id)
+        response = "Hi, you seem to be a new player. I've registered you in my system, but I dont have a name for " \
+                   "you yet. Please set your name by typing `@pingpong name <yourname>`."
     elif command_type == None or command_type not in COMMAND_TYPES:
-        response = 'Not sure what you mean. Try *{}*.'.format(EXAMPLE_COMMAND)
+        response = 'Not sure what you mean. Try *help*.'
     elif command_type == 'help':
         response = help()
     elif command_type == 'name':
         if command_value:
-            response = set_name(player, command_value.lower())
+            success = pingpong_service.update_display_name(player, command_value.lower())
+            if success:
+                response = "Ok. Your name is now {}".format(command_value.lower())
+            else:
+                response = "Sorry. That name is taken."
         else:
             response = "Your name is {}.".format(player.get_name())
     elif command_type == 'match':
@@ -69,21 +83,12 @@ def handle_command(command, channel, sender_id):
     elif command_type == 'stats':
         response = get_stats(command_value)
     elif command_type == 'undo':
-        response = undo_last_match()
-
-    slack_services.send_message(response, channel)
-
-def init_player(sender_id):
-    player = Player(sender_id, sender_id, 1000)
-    db_services.add_player(player)
-    return "Hi, you seem to be a new player. I've registered you in my system, but I dont have a name for you yet. " \
-           "Please set your name by typing *name* <yourname>."
-
-def set_name(player, name):
-    success = db_services.update_player_name(player, name)
-    if success:
-        return "Okay, {}. I've updated your name.".format(name)
-    return "That name already exists. Please choose another one."
+        w_name, w_rating, l_name, l_rating = pingpong_service.undo_last_match()
+        response = "OK, I've undone the last match. Your new ratings are:\n" \
+        "{}: {}\n" \
+        "{}: {}\n" \
+            .format(w_name, w_rating, l_name, l_rating)
+    send_slack_message(response, channel)
 
 def add_match(match_string):
     match_regex = '^<@([A-Z0-9]{9})> ((?:nd )?)<@([A-Z0-9]{9})> ((?:nd )?)(\d+)[ |-](\d+)'
@@ -95,65 +100,30 @@ def add_match(match_string):
                                                                        parsed_match_string.group(4).strip(), \
                                                                        parsed_match_string.group(5), \
                                                                        parsed_match_string.group(6)
-        new_ratings = db_services.add_match_result(player1_id, nondom1 == 'nd', player2_id, nondom2 == 'nd', score1, score2)
-        player1_name = db_services.get_player(player1_id).get_name()
-        player2_name = db_services.get_player(player2_id).get_name()
-        if new_ratings[0]:
+        updated_players = pingpong_service.add_match(player1_id, nondom1 == "nd", player2_id, nondom2 == "nd", score1, score2)
+        if updated_players:
+            p1 = updated_players[0]
+            p1_rating_diff = updated_players[1]
+            p2 = updated_players[2]
+            p2_rating_diff = updated_players[3]
             return "Okay, I added the result! Your new ratings are:\n" \
                    "{}: {} ({})\n" \
                    "{}: {} ({})\n"\
-                .format(player1_name + ('(nd)' if nondom1 == 'nd' else ''), new_ratings[0], ('+' if new_ratings[2] >= 0 else '') + str(new_ratings[2]),
-                        player2_name + ('(nd)' if nondom2 == 'nd' else ''), new_ratings[1], ('+' if new_ratings[3] >= 0 else '') + str(new_ratings[3]))
+                .format(p1.get_name(), p1.get_rating(), ('+' if p1_rating_diff >= 0 else '') + str(p1_rating_diff),
+                        p2.get_name(), p2.get_rating(), ('+' if p2_rating_diff >= 0 else '') + str(p2_rating_diff))
         return "Hm. There seems to be something wrong with your input."
     return "That's not how you add a new match result. Type *match* @<name> @<name> <points> <points>."
 
-def undo_last_match():
-    latest_match = db_services.get_matches(limit=1)[0]
-    loser_id = latest_match.get("loser_id")
-    winner_id = latest_match.get("winner_id")
-    loser_rating = latest_match.get("loser_rating")
-    winner_rating = latest_match.get("winner_rating")
-    loser_name = db_services.get_player(loser_id).get_name()
-    winner_name = db_services.get_player(winner_id).get_name()
-
-    db_services.delete_match(latest_match.get("id"))
-    db_services.update_player_rating(Player(loser_id, "whatever", loser_rating), loser_rating)
-    db_services.update_player_rating(Player(winner_id, "whatever", winner_rating), winner_rating)
-
-    return "OK, I've undone the last match. Your new ratings are:\n" \
-                   "{}: {}\n" \
-                   "{}: {}\n"\
-        .format(winner_name, winner_rating, loser_name, loser_rating)
-
 
 def get_stats(name):
-    leaderboard = db_services.get_leaderboard()
     if name:
-        response = get_player_stats(name.lower(), leaderboard)
+        rating, wins, losses, ratio = get_player_stats(name)
+        response = "Here are the stats for {}:\nRating: {:.2f}\nW/L Ratio: {}\nWins: {}\nLosses: {}" \
+            .format(name, rating, ratio, wins, losses)
     else:
-        total_matches, _ = db_services.get_stats()
-        printable_leaderboard = format_leaderboard(leaderboard)
         response = "Total Matches played: {}\n" \
-                   "{}".format(total_matches, printable_leaderboard)
+                   "{}".format(pingpong_service.get_total_matches(), pingpong_service.get_leaderboard())
     return response
-
-def get_player_stats(name, leaderboard):
-    wins, losses, rating, ratio = 0, 0, 0, 0
-    for l in leaderboard:
-        if l['Name'] == name:
-            wins = l['Wins']
-            losses = l['Losses']
-            rating = l['Rating']
-            ratio = l['W/L Ratio']
-    response = "Here are the stats for {}:\nRating: {:.2f}\nW/L Ratio: {}\nWins: {}\nLosses: {}"\
-        .format(name, rating, ratio, wins, losses)
-    return response
-
-def format_leaderboard(leaderboard):
-    s = ''
-    for i, l in enumerate(leaderboard):
-        s += '{}. {} ({})\n'.format(i + 1, l['Name'], l['Rating'])
-    return s
 
 def help():
     s = '*match @<name> @<name> <points> <points>*: Add a new match result.\n' \
@@ -167,12 +137,12 @@ def help():
     return s
 
 if __name__ == "__main__":
-    if slack_services.slack_client.rtm_connect(with_team_state=False):
+    if slack_client.rtm_connect(with_team_state=False):
         print ("Ping Pong Bot connected and running!")
         # Read bot's user ID by calling Web API method `auth.test`
-        pingpongbot_id = slack_services.slack_client.api_call("auth.test")["user_id"]
+        pingpongbot_id = slack_client.api_call("auth.test")["user_id"]
         while True:
-            command, channel, sender = parse_bot_commands(slack_services.slack_client.rtm_read())
+            command, channel, sender = parse_bot_commands(slack_client.rtm_read())
             if command and (channel == "C8MAMM6AC" or sender == 'U6N8D853P'):
                 handle_command(command, channel, sender)
             time.sleep(RTM_READ_DELAY)
