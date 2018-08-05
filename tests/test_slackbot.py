@@ -17,12 +17,6 @@ def set_pingpongbotid():
     yield
     slackbot.pingpongbot_id = None
 
-# @pytest.fixture
-# def db_services_mock(monkeypatch):
-#     dbs_mock = mock.MagicMock()
-#     monkeypatch.setattr(services, "db_services", lambda _: dbs_mock)
-#     yield dbs_mock
-
 
 def text_to_slack_events(text):
     return [{'type': 'message', 'user': test_user, 'text': text, 'client_msg_id': 'abcd', 'team': 'T3XCNGHJL',

@@ -1,6 +1,5 @@
 import db
 from models import Player, Match
-import util
 
 def add_new_player(id):
     player = Player(id, id, 1000)
@@ -42,7 +41,7 @@ def add_match(p1_id, nd1, p2_id, nd2, score_p1, score_p2):
         conn, cursor = db.connect()
         db.create_match(cursor, match)
 
-        new_rating1, new_rating2 = util.calculate_new_elo_ratings(rating1=p1.get_rating(), rating2=p2.get_rating(),
+        new_rating1, new_rating2 = calculate_new_elo_ratings(rating1=p1.get_rating(), rating2=p2.get_rating(),
                                                                   player1_win=int(match.player1_score) > int(match.player2_score))
         db.update_player(cursor, p1.id, new_rating=new_rating1)
         db.update_player(cursor, p2.id, new_rating=new_rating2)
@@ -118,7 +117,16 @@ def get_player_stats(name):
     wl_ratio = str(wins/losses) if losses > 0 else '∞'
     return player.get_rating(), wins, losses, wl_ratio
 
-
+def calculate_new_elo_ratings(rating1, rating2, player1_win):
+    t1 = 10 ** (rating1 / 400)
+    t2 = 10 ** (rating2 / 400)
+    e1 = (t1 / (t1 + t2))
+    e2 = (t2 / (t1 + t2))
+    s1 = 1 if player1_win else 0
+    s2 = 0 if player1_win else 1
+    new_rating1 = rating1 + int(round(32 * (s1 - e1)))
+    new_rating2 = rating2 + int(round(32 * (s2 - e2)))
+    return new_rating1, new_rating2
 
 
 
