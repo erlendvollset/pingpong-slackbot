@@ -130,7 +130,7 @@ if __name__ == "__main__":
         pingpongbot_id = slack_client.api_call("auth.test")["user_id"]
         while True:
             command, channel, sender = parse_bot_commands(slack_client.rtm_read())
-            if command and channel == ping_pong_channel_id:
+            if command and (channel == ping_pong_channel_id or channel == admin_channel_id):
                 response = handle_command(command, sender)
                 send_slack_message(response, channel)
             time.sleep(RTM_READ_DELAY)
