@@ -17,24 +17,27 @@ def get_player(player_id):
         return players[0]
     return None
 
-def update_display_name(player_id, new_name):
+def update_display_name(player, new_name):
     conn, cursor = db.connect()
     players = db.get_players(cursor)
     names = [p.get_name().lower() for p in players]
     if new_name.lower() in names:
         return False
-    db.update_player(cursor, player_id, new_name=new_name)
+    db.update_player(cursor, player.get_id(), new_name=new_name)
     conn.commit()
     conn.close()
     return True
 
 def add_match(p1_id, nd1, p2_id, nd2, score_p1, score_p2):
+    if p1_id == p2_id or int(score_p1) == int(score_p2):
+        return None
+
     p1_id += "(nd)" if nd1 else ""
     p1 = get_player(p1_id)
     p2_id += "(nd)" if nd2 else ""
     p2 = get_player(p2_id)
 
-    if p1 and p2 and int(score_p1) != int(score_p2) and p1_id != p2_id:
+    if p1 and p2:
         match = Match(None, p1_id, p2_id, score_p1, score_p2, p1.get_rating(), p2.get_rating())
         conn, cursor = db.connect()
         db.create_match(cursor, match)
@@ -55,7 +58,13 @@ def add_match(p1_id, nd1, p2_id, nd2, score_p1, score_p2):
 
 def undo_last_match():
     conn, cursor = db.connect()
-    latest_match = db.get_matches(cursor)[0]
+    matches = db.get_matches(cursor)
+
+    if not matches:
+        return None, None, None, None
+
+    latest_match = matches[0]
+
     if latest_match.player1_score > latest_match.player2_score:
         winner = get_player(player_id=latest_match.player1_id)
         winner_prev_rating = latest_match.player1_rating
@@ -71,6 +80,7 @@ def undo_last_match():
     db.delete_matches(cursor, ids=[latest_match.id])
     db.update_player(cursor, winner.id, new_rating=winner_prev_rating)
     db.update_player(cursor, loser.id, new_rating=loser_prev_rating)
+    conn.commit()
     conn.close()
     return winner.name, winner_prev_rating, loser.name, loser_prev_rating
 
@@ -78,7 +88,7 @@ def get_leaderboard():
     conn, cursor = db.connect()
     players = db.get_players(cursor)
     conn.close()
-    printable_leaderboard = "\n".join(["{}. {} ({})".format(i, p.get_name(), p.get_rating()) for i, p in enumerate(players)])
+    printable_leaderboard = "\n".join(["{}. {} ({})".format(i + 1, p.get_name(), p.get_rating()) for i, p in enumerate(players)])
     return printable_leaderboard
 
 def get_total_matches():

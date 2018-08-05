@@ -73,15 +73,15 @@ def handle_command(command, channel, sender_id):
         if command_value:
             success = pingpong_service.update_display_name(player, command_value.lower())
             if success:
-                response = "Ok. Your name is now {}".format(command_value.lower())
+                response = "Ok, {}. I've updated your name.".format(command_value.lower())
             else:
                 response = "Sorry. That name is taken."
         else:
             response = "Your name is {}.".format(player.get_name())
     elif command_type == 'match':
-        response = add_match(command_value)
+        response = handle_match_command(command_value)
     elif command_type == 'stats':
-        response = get_stats(command_value)
+        response = handle_stats_command(command_value)
     elif command_type == 'undo':
         w_name, w_rating, l_name, l_rating = pingpong_service.undo_last_match()
         response = "OK, I've undone the last match. Your new ratings are:\n" \
@@ -90,7 +90,7 @@ def handle_command(command, channel, sender_id):
             .format(w_name, w_rating, l_name, l_rating)
     send_slack_message(response, channel)
 
-def add_match(match_string):
+def handle_match_command(match_string):
     match_regex = '^<@([A-Z0-9]{9})> ((?:nd )?)<@([A-Z0-9]{9})> ((?:nd )?)(\d+)[ |-](\d+)'
     parsed_match_string = re.match(match_regex, match_string)
     if parsed_match_string:
@@ -115,9 +115,9 @@ def add_match(match_string):
     return "That's not how you add a new match result. Type *match* @<name> @<name> <points> <points>."
 
 
-def get_stats(name):
+def handle_stats_command(name):
     if name:
-        rating, wins, losses, ratio = get_player_stats(name)
+        rating, wins, losses, ratio = pingpong_service.get_player_stats(name)
         response = "Here are the stats for {}:\nRating: {:.2f}\nW/L Ratio: {}\nWins: {}\nLosses: {}" \
             .format(name, rating, ratio, wins, losses)
     else:
@@ -143,7 +143,7 @@ if __name__ == "__main__":
         pingpongbot_id = slack_client.api_call("auth.test")["user_id"]
         while True:
             command, channel, sender = parse_bot_commands(slack_client.rtm_read())
-            if command and (channel == "C8MAMM6AC" or sender == 'U6N8D853P'):
+            if command and channel == 'D8J3CN9DX':
                 handle_command(command, channel, sender)
             time.sleep(RTM_READ_DELAY)
     else:

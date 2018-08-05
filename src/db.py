@@ -29,14 +29,14 @@ def create_player(cursor, player: Player):
 
 def get_players(cursor, ids: List[int] = None):
     if ids:
-        cursor.execute("SELECT * from Player WHERE id in {} ORDER BY rating;".format(tuple(ids)))
+        cursor.execute("SELECT * from Player WHERE id in ({}) ORDER BY rating DESC;".format(", ".join(["'{}'".format(id) for id in ids])))
     else:
-        cursor.execute("SELECT * from Player ORDER BY rating;")
+        cursor.execute("SELECT * from Player ORDER BY rating DESC;")
     res = cursor.fetchall()
     return [Player(*p) for p in res]
 
 def delete_players(cursor, ids: List[int]):
-    cursor.execute("DELETE FROM Player WHERE id in {}".format(tuple(ids)))
+    cursor.execute("DELETE FROM Player WHERE id in ({})".format(", ".join(["'{}'".format(id) for id in ids])))
 
 def update_player(cursor, id: int, new_name=None, new_rating=None) -> bool:
     if new_name:
@@ -58,12 +58,12 @@ def create_match(cursor, match: Match):
 
 def get_matches(cursor, ids: List[int] = None):
     if ids:
-        cursor.execute("SELECT * from Match WHERE id in {} ORDER BY id DESC;".format(tuple(ids)))
+        cursor.execute("SELECT * from Match WHERE id in ({}) ORDER BY id DESC;".format(", ".join(["'{}'".format(id) for id in ids])))
     else:
         cursor.execute("SELECT * from Match ORDER BY id DESC;")
     res = cursor.fetchall()
     return [Match(*match) for match in res]
 
 def delete_matches(cursor, ids: List[int]):
-    cursor.execute("DELETE FROM Match WHERE id in {}".format(tuple(ids)))
+    cursor.execute("DELETE FROM Match WHERE id in ({})".format(", ".join(["'{}'".format(id) for id in ids])))
 
