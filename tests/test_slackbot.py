@@ -110,9 +110,15 @@ def test_add_match_non_existing_player(players):
     assert len(matches) == 0
 
 def test_get_stats(players):
+    pingpong_service.add_match(test_user_id, False, pingpongbot_id, False, 11, 0)
     res = slackbot.handle_command("stats", test_user_id)
-    lb = "1. erlend (1000)\n2. erlend(nd) (1000)\n3. pingpong (1000)\n4. pingpong(nd) (1000)"
-    assert res == responses.stats(0, lb)
+    lb = "1. erlend (1016)\n2. pingpong (984)"
+    assert res == responses.stats(1, lb)
+
+def test_get_stats_no_active_players(players):
+    res = slackbot.handle_command("stats", test_user_id)
+
+    assert res == responses.stats(0, "")
 
 def test_get_player_stats(players):
     res = slackbot.handle_command("stats erlend", test_user_id)
