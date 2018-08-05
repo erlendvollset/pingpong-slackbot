@@ -110,3 +110,4 @@ env
 # other
 .DS_Store
 .pytest_cache/
+test.py

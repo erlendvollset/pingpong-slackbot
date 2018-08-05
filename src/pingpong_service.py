@@ -125,7 +125,7 @@ def get_player_stats(name):
                 wins += 1
             else:
                 losses += 1
-    wl_ratio = str(wins/losses) if losses > 0 else '∞'
+    wl_ratio = "{:.2f}".format(wins/losses) if losses > 0 else '∞'
     return player.get_rating(), wins, losses, wl_ratio
 
 def calculate_new_elo_ratings(rating1, rating2, player1_win):
