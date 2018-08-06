@@ -54,6 +54,8 @@ def match_added(p1, p1rating, p1diff, p2, p2rating, p2diff):
     ]
     message = random.choice(messages)
 
+    if winner_name == "Ola":
+        message = "That doesn't look like anything to me."
     if loser_name == "Erlend":
         erlend_lose_responses = list()
         erlend_lose_responses.append("Hm. Did not see that coming.")
@@ -70,8 +72,7 @@ def match_added(p1, p1rating, p1diff, p2, p2rating, p2diff):
         erlend_win_responses.append("Wow! What an amazing display of athleticism!")
         erlend_win_responses.append("{}... Why do you even bother trying?".format(loser_name))
         message = random.choice(erlend_win_responses)
-    if winner_name == "ola":
-        message = "That doesn't look like anything to me."
+
 
     return "{}\n\nYour new ratings are:\n" \
                    "{}: {} ({})\n" \
