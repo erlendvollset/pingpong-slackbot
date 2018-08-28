@@ -1,19 +1,21 @@
-import pytest
-import slackbot
 import db
-from models import Player
-import responses
 import pingpong_service
+import pytest
+import responses
+import slackbot
+from models import Player
 
 pingpongbot_id = "U9FID819D"
-test_user_id = 'U6N8D853P'
-test_channel = 'D8J3CN9DX'
+test_user_id = "U6N8D853P"
+test_channel = "D8J3CN9DX"
+
 
 @pytest.fixture(autouse=True)
 def set_pingpongbotid():
     slackbot.pingpongbot_id = pingpongbot_id
     yield
     slackbot.pingpongbot_id = None
+
 
 @pytest.fixture
 def players():
@@ -26,21 +28,35 @@ def players():
     conn.close()
     yield p1, p2
 
+
 def text_to_slack_events(text):
-    return [{'type': 'message', 'user': test_user_id, 'text': text, 'client_msg_id': 'abcd', 'team': 'T3XCNGHJL',
-            'channel': test_channel, 'event_ts': '1', 'ts': '2'}]
+    return [
+        {
+            "type": "message",
+            "user": test_user_id,
+            "text": text,
+            "client_msg_id": "abcd",
+            "team": "T3XCNGHJL",
+            "channel": test_channel,
+            "event_ts": "1",
+            "ts": "2",
+        }
+    ]
+
 
 def parse_bot_commands_params():
-    return [(text_to_slack_events('<@{}> match <@KD839FK38> <@9FJ48GJF8> 11 0'.format(pingpongbot_id)),
-             ("match <@KD839FK38> <@9FJ48GJF8> 11 0", test_channel, test_user_id)),
-            (text_to_slack_events('<@{}> match <@KD839FK38> <@9FJ48GJF8> 11 0'.format("NOT_BOT_ID")),
-             (None, None, None))
-            ]
+    return [
+        (
+            text_to_slack_events("<@{}> match <@KD839FK38> <@9FJ48GJF8> 11 0".format(pingpongbot_id)),
+            ("match <@KD839FK38> <@9FJ48GJF8> 11 0", test_channel, test_user_id),
+        ),
+        (text_to_slack_events("<@{}> match <@KD839FK38> <@9FJ48GJF8> 11 0".format("NOT_BOT_ID")), (None, None, None)),
+    ]
+
 
 @pytest.mark.parametrize("test_input, expected", parse_bot_commands_params())
 def test_parse_bot_commands(test_input, expected):
     assert slackbot.parse_bot_commands(test_input) == expected
-
 
 
 def test_add_player():
@@ -57,6 +73,7 @@ def test_add_player():
     assert players[1].get_name() == "erlend(nd)"
     assert players[1].get_id() == test_user_id + "(nd)"
 
+
 def test_get_display_name(players):
     res = slackbot.handle_command("name emil", test_user_id)
 
@@ -70,6 +87,7 @@ def test_get_display_name(players):
     assert p.get_id() == test_user_id
     assert p.get_name() == "emil"
     assert p_nd.get_name() == "emil(nd)"
+
 
 def test_get_display_name_taken(players):
     res = slackbot.handle_command("name pingpong", test_user_id)
@@ -85,8 +103,9 @@ def test_get_display_name_taken(players):
     assert p.get_name() == "erlend"
     assert p_nd.get_name() == "erlend(nd)"
 
+
 def test_add_match(players):
-    slackbot.handle_command("match <@{}> <@{}> nd 11 0".format(test_user_id, pingpongbot_id), test_user_id)
+    slackbot.handle_command("match   <@{}>   <@{}>    nd    11   0".format(test_user_id, pingpongbot_id), test_user_id)
     conn, cursor = db.connect()
     matches = db.get_matches(cursor)
     p1 = db.get_players(cursor, [test_user_id])[0]
@@ -100,6 +119,7 @@ def test_add_match(players):
     assert p1.get_rating() == 1016
     assert p2.get_rating() == 984
 
+
 def test_add_match_non_existing_player(players):
     res = slackbot.handle_command("match <@{}> <@XXXXXXXXX> nd 11 0".format(test_user_id), test_user_id)
     conn, cursor = db.connect()
@@ -109,24 +129,29 @@ def test_add_match_non_existing_player(players):
     assert res == responses.player_does_not_exist()
     assert len(matches) == 0
 
+
 def test_get_stats(players):
     pingpong_service.add_match(test_user_id, False, pingpongbot_id, False, 11, 0)
     res = slackbot.handle_command("stats", test_user_id)
     lb = "1. erlend (1016)\n2. pingpong (984)"
     assert res == responses.stats(1, lb)
 
+
 def test_get_stats_no_active_players(players):
     res = slackbot.handle_command("stats", test_user_id)
 
     assert res == responses.stats(0, "")
 
+
 def test_get_player_stats(players):
     res = slackbot.handle_command("stats erlend", test_user_id)
-    assert res == responses.player_stats("erlend", 1000, '∞', 0, 0)
+    assert res == responses.player_stats("erlend", 1000, "∞", 0, 0)
+
 
 def test_get_player_stats_non_existing_player(players):
     res = slackbot.handle_command("stats notAUser", test_user_id)
     assert res == responses.player_does_not_exist()
+
 
 def test_undo(players):
     pingpong_service.add_match(test_user_id, False, pingpongbot_id, False, 11, 0)
@@ -146,29 +171,3 @@ def test_undo(players):
         assert p.get_rating() == 1000
 
     assert pingpong_service.get_total_matches() == 0
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
