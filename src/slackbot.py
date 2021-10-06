@@ -126,7 +126,6 @@ def handle_match_command(match_string: str) -> str:
 def handle(client: RTMClient, event: dict) -> None:
     print(event)
     command, channel, sender = parse_bot_command(event)
-    log.info(command, channel, sender)
     if command and (channel == PINGPONG_CHANNEL_ID or channel == ADMIN_CHANNEL_ID):
         response = handle_command(command, sender)
         client.web_client.chat_postMessage(channel=channel, text=response)
