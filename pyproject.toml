@@ -6,15 +6,8 @@ authors = ["Erlend Vollset <erlend.vollset@cognite.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-certifi = "2018.4.16"
-chardet = "3.0.4"
-gunicorn = "19.7.1"
-idna = "2.7"
-requests = "2.19.1"
-six = "1.11.0"
 slackclient = "1.1.0"
-urllib3 = "1.23"
-websocket-client = "0.48.0"
+cognite-sdk-experimental = "^0.60.15"
 slack-sdk = "^3.11.2"
 
 [tool.poetry.dev-dependencies]

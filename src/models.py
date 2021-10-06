@@ -1,8 +1,13 @@
+from dataclasses import dataclass
+
+from src.constants import PING_PONG, DOMINANT, NON_DOMINANT
+
+
 class Player():
-    def __init__(self, id, name, elo_rating=1000):
+    def __init__(self, id: str, name: str):
         self.id = id
         self.name = name
-        self.elo_rating = elo_rating
+        self.elo_ratings = {DOMINANT: {}, NON_DOMINANT: {}}
 
     def get_id(self):
         return self.id
@@ -10,8 +15,8 @@ class Player():
     def get_name(self):
         return self.name
 
-    def get_rating(self):
-        return self.elo_rating
+    def get_rating(self, sport: str=PING_PONG, hand=DOMINANT):
+        return self.elo_ratings[hand].get(sport, 1000)
 
     def set_id(self, id):
         self.id = id
@@ -19,15 +24,19 @@ class Player():
     def set_name(self, name):
         self.name = name
 
-    def set_rating(self, elo_rating):
-        self.elo_rating = elo_rating
+    def set_rating(self, elo_rating, sport: str=PING_PONG, hand=DOMINANT):
+        self.elo_ratings[hand][sport] = elo_rating
 
+
+@dataclass
 class Match():
-    def __init__(self, id, player1_id, player2_id, player1_score, player2_score, player1_rating, player2_rating):
-        self.id = id
-        self.player1_id = player1_id
-        self.player2_id = player2_id
-        self.player1_score = player1_score
-        self.player2_score = player2_score
-        self.player1_rating = player1_rating
-        self.player2_rating = player2_rating
+    id: str
+    player1_id: str
+    player2_id: str
+    player1_score: int
+    player2_score: int
+    player1_rating: int
+    player2_rating: int
+    sport: str = PING_PONG
+    player1_hand: str = DOMINANT
+    player2_hand: str = DOMINANT
