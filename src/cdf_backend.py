@@ -5,7 +5,7 @@ from typing import List
 from cognite.client.data_classes import Asset, TimeSeries, Event
 from cognite.experimental import CogniteClient
 
-from src.constants import SPORT, HAND, STARTING_RATING, DOMINANT, MATCH
+from src.constants import SPORT, HAND, STARTING_RATING, DOMINANT, MATCH, ROOT_ASSET_EXTERNAL_ID
 from src.models import Player, Match
 
 
@@ -13,7 +13,9 @@ class CDFBackend:
     def __init__(self, sport):
         self.client = CogniteClient()
         self.sport = sport
-        self.root_asset = self.client.assets.retrieve()
+        self.root_asset = self.client.assets.retrieve(external_id=ROOT_ASSET_EXTERNAL_ID)
+        if self.root_asset is None:
+            self.root_asset = self.client.assets.create(Asset(external_id=ROOT_ASSET_EXTERNAL_ID, name=ROOT_ASSET_EXTERNAL_ID))
 
     def create_player(self, player: Player):
         self.client.assets.create(Asset(external_id=player.get_id(), name=player.get_name(), root_id=self.root_asset.id))
