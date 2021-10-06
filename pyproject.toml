@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "pingpong-slackbot"
+version = "0.1.0"
+description = ""
+authors = ["Erlend Vollset <erlend.vollset@cognite.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+certifi = "2018.4.16"
+chardet = "3.0.4"
+gunicorn = "19.7.1"
+idna = "2.7"
+requests = "2.19.1"
+six = "1.11.0"
+slackclient = "1.1.0"
+urllib3 = "1.23"
+websocket-client = "0.48.0"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
