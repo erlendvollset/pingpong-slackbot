@@ -9,6 +9,7 @@ python = "^3.7"
 slackclient = "1.1.0"
 cognite-sdk-experimental = "^0.60.15"
 
+
 [tool.poetry.dev-dependencies]
 
 [build-system]
