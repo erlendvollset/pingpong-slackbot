@@ -57,6 +57,18 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "slack-sdk"
+version = "3.11.2"
+description = "The Slack API Platform SDK for Python"
+category = "main"
+optional = false
+python-versions = ">=3.6.0"
+
+[package.extras]
+optional = ["aiodns (>1.0)", "aiohttp (>=3.7.3,<4)", "boto3 (<=2)", "SQLAlchemy (>=1,<2)", "websockets (>=9.1,<10)", "websocket-client (>=1,<2)"]
+testing = ["pytest (>=5.4,<6)", "pytest-asyncio (<1)", "Flask-Sockets (>=0.2,<1)", "Flask (>=1,<2)", "Werkzeug (<2)", "pytest-cov (>=2,<3)", "codecov (>=2,<3)", "flake8 (>=3,<4)", "black (==21.9b0)", "psutil (>=5,<6)", "databases (>=0.3)", "boto3 (<=2)", "moto (<2)"]
+
+[[package]]
 name = "slackclient"
 version = "1.1.0"
 description = "Slack API clients for Web API and RTM API"
@@ -95,7 +107,7 @@ six = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "6b03e1935e39562976ba77ccdd234ef4709e2ae74e457d31c19174365f0e6e97"
+content-hash = "26788f0063366e088b6c677b793717e171d41a9b1f5b8161febd7d5aff8a1ab8"
 
 [metadata.files]
 certifi = [
@@ -121,6 +133,10 @@ requests = [
 six = [
     {file = "six-1.11.0-py2.py3-none-any.whl", hash = "sha256:832dc0e10feb1aa2c68dcc57dbb658f1c7e65b9b61af69048abc87a2db00a0eb"},
     {file = "six-1.11.0.tar.gz", hash = "sha256:70e8a77beed4562e7f14fe23a786b54f6296e34344c23bc42f07b15018ff98e9"},
+]
+slack-sdk = [
+    {file = "slack_sdk-3.11.2-py2.py3-none-any.whl", hash = "sha256:35245ec34c8549fbb5c43ccc17101afd725b3508bb784da46530b214f496bf93"},
+    {file = "slack_sdk-3.11.2.tar.gz", hash = "sha256:131bf605894525c2d66da064677eabc19f53f02ce0f82a3f2fa130d4ec3bc1b0"},
 ]
 slackclient = [
     {file = "slackclient-1.1.0.tar.gz", hash = "sha256:5d789e5f5f8c4d57052e946701fcf9d6d45e0db6dfd2b163707517cccede52fb"},
