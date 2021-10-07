@@ -1,20 +1,19 @@
-import db
-import pingpong_service
 import pytest
-import responses
-import slackbot
-from models import Player
+
+from pingpong import slackbot, responses, pingpong_service
+from pingpong.models import Player
+from pingpong.slackbot import BotCommand
 
 pingpongbot_id = "U9FID819D"
 test_user_id = "U6N8D853P"
 test_channel = "D8J3CN9DX"
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="session")
 def set_pingpongbotid():
-    slackbot.pingpongbot_id = pingpongbot_id
+    slackbot.PINGPONG_BOT_ID = pingpongbot_id
     yield
-    slackbot.pingpongbot_id = None
+    slackbot.PINGPONG_BOT_ID = None
 
 
 @pytest.fixture
@@ -29,34 +28,32 @@ def players():
     yield p1, p2
 
 
-def text_to_slack_events(text):
-    return [
-        {
-            "type": "message",
-            "user": test_user_id,
-            "text": text,
-            "client_msg_id": "abcd",
-            "team": "T3XCNGHJL",
-            "channel": test_channel,
-            "event_ts": "1",
-            "ts": "2",
-        }
-    ]
+def text_to_slack_event(text: str) -> dict:
+    return {'type': 'message',
+            'user': test_user_id,
+            'client_msg_id': 'b219e0ef-ce45-4ef8-b933-0b380144d800',
+            'suppress_notification': False,
+            'text': text,
+            'team': 'T3XCNGHJL',
+            'source_team': 'T3XCNGHJL',
+            'user_team': 'T3XCNGHJL',
+            'channel': test_channel,
+            'event_ts': '1633539483.001800',
+            'ts': '1633539483.001800'}
 
 
-def parse_bot_commands_params():
-    return [
-        (
-            text_to_slack_events("<@{}> match <@KD839FK38> <@9FJ48GJF8> 11 0".format(pingpongbot_id)),
-            ("match <@KD839FK38> <@9FJ48GJF8> 11 0", test_channel, test_user_id),
-        ),
-        (text_to_slack_events("<@{}> match <@KD839FK38> <@9FJ48GJF8> 11 0".format("NOT_BOT_ID")), (None, None, None)),
-    ]
-
-
-@pytest.mark.parametrize("test_input, expected", parse_bot_commands_params())
+@pytest.mark.parametrize("test_input, expected", [
+    (
+            text_to_slack_event(f"<@{pingpongbot_id}> match <@KD839FK38> <@9FJ48GJF8> 11 0"),
+            BotCommand("match <@KD839FK38> <@9FJ48GJF8> 11 0", test_channel, test_user_id),
+    ),
+    (
+            text_to_slack_event(f"<@NOT_BOT_ID'> match <@KD839FK38> <@9FJ48GJF8> 11 0"),
+            None,
+    ),
+])
 def test_parse_bot_commands(test_input, expected):
-    assert slackbot.parse_bot_commands(test_input) == expected
+    assert slackbot.parse_bot_command(test_input) == expected
 
 
 def test_add_player():

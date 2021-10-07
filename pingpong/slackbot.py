@@ -1,47 +1,43 @@
 import os
 import re
-import time
+import logging
+from dataclasses import dataclass
+from typing import Tuple, Optional
 
-import pingpong_service
-import responses
-from slackclient import SlackClient
+from pingpong import responses, pingpong_service
 
-# instantiate Slack client
-slack_client = SlackClient(os.getenv("SLACK_BOT_TOKEN"))
+from slack_sdk.rtm_v2 import RTMClient
 
-# starterbot's user ID in Slack: value is assigned after the bot starts up
-pingpongbot_id = None
-ping_pong_channel_id = "C8MAMM6AC"
-admin_channel_id = "D8J3CN9DX"
+logging.basicConfig(level="INFO")
+log = logging.getLogger(__name__)
 
-# constants
-RTM_READ_DELAY = 1  # 1 second delay between reading from RTM
+rtm = RTMClient(token=os.environ["SLACK_BOT_TOKEN"])
+
+PINGPONG_BOT_ID = None
+PINGPONG_CHANNEL_ID = "C8MAMM6AC"
+ADMIN_CHANNEL_ID = "C02H9J7BP97"
+
+MATCH_REGEX = "^<@([A-Z0-9]{9})>\s+((?:nd\s+)?)<@([A-Z0-9]{9})>\s+((?:nd\s+)?)(\d+)(\s+|-)(\d+)"
 MENTION_REGEX = "^<@([A-Z0-9]{9})>(.*)"
 COMMAND_REGEX = "([a-zA-Z]*)(\s+.*)?"
 COMMAND_TYPES = ["name", "help", "match", "stats", "undo"]
 
+@dataclass
+class BotCommand:
+    command: str
+    channel: str
+    sender_id: str
 
-def send_slack_message(message, channel):
-    slack_client.api_call("chat.postMessage", channel=channel or "G8JKTFJ6Q", text=message)
-
-
-def parse_bot_commands(slack_events):
-    """
-        Parses a list of events coming from the Slack RTM API to find bot commands.
-        If a bot command is found, this function returns a tuple of command and channel.
-        If its not found, then this function returns None, None.
-    """
-    for event in slack_events:
-        if event["type"] == "message" and not "subtype" in event:
-            print(event)
-            user_id, message = parse_direct_mention(event["text"])
-            sender = event["user"]
-            if user_id == pingpongbot_id:
-                return message, event["channel"], sender
-    return None, None, None
+def parse_bot_command(event: dict) -> Optional[BotCommand]:
+    if event["type"] == "message" and "subtype" not in event:
+        user_id, message = parse_direct_mention(event["text"])
+        sender = event["user"]
+        if user_id == PINGPONG_BOT_ID:
+            return BotCommand(message, event["channel"], sender)
+    return None
 
 
-def parse_direct_mention(message_text):
+def parse_direct_mention(message_text: str) -> Tuple[Optional[str], Optional[str]]:
     """
         Finds a direct mention (a mention that is at the beginning) in message text
         and returns the user ID which was mentioned. If there is no direct mention, returns None
@@ -51,20 +47,20 @@ def parse_direct_mention(message_text):
     return (matches.group(1), matches.group(2).strip()) if matches else (None, None)
 
 
-def handle_command(command, sender_id):
+def handle_command(bot_command: BotCommand) -> str:
     """
         Executes bot command if the command is known
     """
-    parsed_command = re.match(COMMAND_REGEX, command)
+    parsed_command = re.match(COMMAND_REGEX, bot_command.command)
     command_type, command_value = None, None
     if parsed_command:
         command_type = parsed_command.group(1)
         if parsed_command.group(2):
             command_value = parsed_command.group(2).strip()
     try:
-        player = pingpong_service.get_player(sender_id)
+        player = pingpong_service.get_player(bot_command.sender_id)
     except pingpong_service.PlayerDoesNotExist:
-        pingpong_service.add_new_player(sender_id)
+        pingpong_service.add_new_player(bot_command.sender_id)
         return responses.new_player()
 
     if command_type == "help":
@@ -97,9 +93,8 @@ def handle_command(command, sender_id):
     return responses.unkown_command()
 
 
-def handle_match_command(match_string):
-    match_regex = "^<@([A-Z0-9]{9})>\s+((?:nd\s+)?)<@([A-Z0-9]{9})>\s+((?:nd\s+)?)(\d+)(\s+|-)(\d+)"
-    parsed_match_string = re.match(match_regex, match_string)
+def handle_match_command(match_string: str) -> str:
+    parsed_match_string = re.match(MATCH_REGEX, match_string)
     if parsed_match_string:
         player1_id, nondom1, player2_id, nondom2, score1, score2 = (
             parsed_match_string.group(1),
@@ -110,18 +105,9 @@ def handle_match_command(match_string):
             parsed_match_string.group(7),
         )
         try:
-            updated_players = pingpong_service.add_match(
-                player1_id, nondom1 == "nd", player2_id, nondom2 == "nd", score1, score2
+            p1, p1_rating_diff, p2, p2_rating_diff = pingpong_service.add_match(
+                player1_id, nondom1 == "nd", player2_id, nondom2 == "nd", int(score1), int(score2)
             )
-        except pingpong_service.PlayerDoesNotExist:
-            return responses.player_does_not_exist()
-        except pingpong_service.InvalidMatchRegistration:
-            return responses.invalid_match_registration()
-        if updated_players:
-            p1 = updated_players[0]
-            p1_rating_diff = updated_players[1]
-            p2 = updated_players[2]
-            p2_rating_diff = updated_players[3]
             return responses.match_added(
                 p1.get_name(),
                 p1.get_rating(),
@@ -129,20 +115,28 @@ def handle_match_command(match_string):
                 p2.get_name(),
                 p2.get_rating(),
                 ("+" if p2_rating_diff >= 0 else "") + str(p2_rating_diff),
-            )
+                )
+        except pingpong_service.PlayerDoesNotExist:
+            return responses.player_does_not_exist()
+        except pingpong_service.InvalidMatchRegistration:
+            return responses.invalid_match_registration()
     return responses.invalid_match_command()
 
 
+@rtm.on("message")
+def handle(client: RTMClient, event: dict) -> None:
+    bot_command = parse_bot_command(event)
+    if bot_command and (bot_command.channel == PINGPONG_CHANNEL_ID or bot_command.channel == ADMIN_CHANNEL_ID):
+        response = handle_command(bot_command)
+        client.web_client.chat_postMessage(channel=bot_command.channel, text=response)
+
+
+def main():
+    global PINGPONG_BOT_ID
+    log.info("Starting pingpong bot")
+    info = rtm.web_client.rtm_connect()
+    PINGPONG_BOT_ID = info["self"]["id"]
+    rtm.start()
+
 if __name__ == "__main__":
-    if slack_client.rtm_connect(with_team_state=False):
-        print("Ping Pong Bot connected and running!")
-        # Read bot's user ID by calling Web API method `auth.test`
-        pingpongbot_id = slack_client.api_call("auth.test")["user_id"]
-        while True:
-            command, channel, sender = parse_bot_commands(slack_client.rtm_read())
-            if command and (channel == ping_pong_channel_id or channel == admin_channel_id):
-                response = handle_command(command, sender)
-                send_slack_message(response, channel)
-            time.sleep(RTM_READ_DELAY)
-    else:
-        print("Connection failed. Exception traceback printed above.")
+    main()

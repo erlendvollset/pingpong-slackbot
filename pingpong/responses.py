@@ -34,10 +34,10 @@ def invalid_match_command():
 
 def match_added(p1, p1rating, p1diff, p2, p2rating, p2diff):
 
-    winner_name = (p1 if int(p1diff) >= 0 else p2).capitalize()
+    winner_name = (p1 if int(eval(p1diff)) >= 0 else p2).capitalize()
     if winner_name.endswith("(nd)"):
         winner_name = winner_name[:-4]
-    loser_name = (p1 if int(p1diff) < 0 else p2).capitalize()
+    loser_name = (p1 if int(eval(p1diff)) < 0 else p2).capitalize()
     if loser_name.endswith("(nd)"):
         loser_name = loser_name[:-4]
 
