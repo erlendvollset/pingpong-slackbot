@@ -1,4 +1,4 @@
-FROM python:3.7.12-slim-buster
+FROM python:3.10.0-slim-buster
 
 RUN pip3 install poetry
 

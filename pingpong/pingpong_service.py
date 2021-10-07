@@ -1,33 +1,36 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
-from pingpong.models import Player, Match
 from pingpong.cdf_backend import CDFBackend
 from pingpong.constants import DOMINANT, NON_DOMINANT
+from pingpong.models import Match, Player
 
 CDF_BACKEND = CDFBackend()
 
-def add_new_player(id):
+
+def add_new_player(id: str) -> None:
     player = Player(id, id)
     CDF_BACKEND.create_player(player)
 
 
-def get_player(player_id):
+def get_player(player_id: str) -> Player:
     players = CDF_BACKEND.get_players(ids=[player_id])
     if players:
         return players[0]
     raise PlayerDoesNotExist()
 
 
-def update_display_name(player, new_name):
-    players = CDF_BACKEND.get_players()
-    names = [p.get_name().lower() for p in players]
+def update_display_name(player: Player, new_name: str) -> bool:
+    players = CDF_BACKEND.list_players()
+    names = [p.name.lower() for p in players]
     if new_name.lower() in names:
         return False
-    CDF_BACKEND.update_player(player.get_id(), new_name=new_name)
+    CDF_BACKEND.update_player(player.id, new_name=new_name)
     return True
 
 
-def add_match(p1_id: str, nd1: bool, p2_id: str, nd2: bool, score_p1: int, score_p2: int) -> Tuple[Player, int, Player, int]:
+def add_match(
+    p1_id: str, nd1: bool, p2_id: str, nd2: bool, score_p1: int, score_p2: int
+) -> Tuple[Player, int, Player, int]:
     if p1_id == p2_id or int(score_p1) == int(score_p2):
         raise InvalidMatchRegistration()
 
@@ -38,29 +41,39 @@ def add_match(p1_id: str, nd1: bool, p2_id: str, nd2: bool, score_p1: int, score
 
     if p1 and p2:
         match = Match(
-            p1_id, p2_id, score_p1, score_p2, p1.get_rating(), p2.get_rating(), player1_hand=p1_hand, player2_hand=p2_hand
+            p1_id,
+            p2_id,
+            score_p1,
+            score_p2,
+            p1.get_rating(),
+            p2.get_rating(),
+            player1_hand=p1_hand,
+            player2_hand=p2_hand,
         )
         CDF_BACKEND.create_match(match)
 
         new_rating1, new_rating2 = calculate_new_elo_ratings(
             rating1=p1.get_rating(hand=p1_hand),
             rating2=p2.get_rating(hand=p2_hand),
-            player1_win=int(match.player1_score) > int(match.player2_score)
+            player1_win=int(match.player1_score) > int(match.player2_score),
         )
-        CDF_BACKEND.update_player(p1.id, new_rating=new_rating1, hand=p1_hand)
-        CDF_BACKEND.update_player(p2.id, new_rating=new_rating2, hand=p2_hand)
+        new_p1 = CDF_BACKEND.update_player(p1.id, new_rating=new_rating1, hand=p1_hand)
+        new_p2 = CDF_BACKEND.update_player(p2.id, new_rating=new_rating2, hand=p2_hand)
 
-        new_p1 = get_player(p1.id)
-        new_p2 = get_player(p2.id)
-
-        updated_players = (new_p1, new_rating1 - p1.get_rating(), new_p2, new_rating2 - p2.get_rating())
+        updated_players = (
+            new_p1,
+            new_rating1 - p1.get_rating(),
+            new_p2,
+            new_rating2 - p2.get_rating(),
+        )
         return updated_players
     raise PlayerDoesNotExist()
 
-def undo_last_match():
+
+def undo_last_match() -> Tuple[Optional[str], Optional[int], Optional[str], Optional[int]]:
     matches = CDF_BACKEND.get_matches()
 
-    if not matches or True: #Todo: fix undo
+    if not matches or True:  # Todo: fix undo
         return None, None, None, None
 
     latest_match = matches[0]
@@ -76,32 +89,37 @@ def undo_last_match():
         loser = get_player(player_id=latest_match.player1_id)
         loser_prev_rating = latest_match.player1_rating
 
-
     CDF_BACKEND.delete_matches(ids=[latest_match.id])
     CDF_BACKEND.update_player(winner.id, new_rating=winner_prev_rating)
     CDF_BACKEND.update_player(loser.id, new_rating=loser_prev_rating)
     return winner.name, winner_prev_rating, loser.name, loser_prev_rating
 
-def get_leaderboard():
-    players = CDF_BACKEND.get_players()
+
+def get_leaderboard() -> str:
+    players = CDF_BACKEND.list_players()
     matches = CDF_BACKEND.get_matches()
     active_players = [p for p in players if __has_played_match(matches, p)]
     active_players = sorted(active_players, key=lambda p: p.get_rating(), reverse=True)
-    printable_leaderboard = "\n".join(["{}. {} ({})".format(i + 1, p.get_name(), p.get_rating()) for i, p in enumerate(active_players)])
+    printable_leaderboard = "\n".join(
+        ["{}. {} ({})".format(i + 1, p.name, p.get_rating()) for i, p in enumerate(active_players)]
+    )
     return printable_leaderboard
 
-def __has_played_match(matches, player):
+
+def __has_played_match(matches: list[Match], player: Player) -> bool:
     for match in matches:
-        if match.player1_id == player.get_id() or match.player2_id == player.get_id():
+        if match.player1_id == player.id or match.player2_id == player.id:
             return True
     return False
 
-def get_total_matches():
+
+def get_total_matches() -> int:
     matches = CDF_BACKEND.get_matches()
     return len(matches)
 
-def get_player_stats(name):
-    players = CDF_BACKEND.get_players()
+
+def get_player_stats(name: str) -> Tuple[int, int, int, str]:
+    players = CDF_BACKEND.get_players([name])
     try:
         player = next(player for player in players if player.name == name)
     except StopIteration:
@@ -120,14 +138,15 @@ def get_player_stats(name):
                 wins += 1
             else:
                 losses += 1
-    wl_ratio = "{:.2f}".format(wins/losses) if losses > 0 else '∞'
+    wl_ratio = "{:.2f}".format(wins / losses) if losses > 0 else "∞"
     return player.get_rating(), wins, losses, wl_ratio
 
-def calculate_new_elo_ratings(rating1, rating2, player1_win):
+
+def calculate_new_elo_ratings(rating1: int, rating2: int, player1_win: bool) -> Tuple[int, int]:
     t1 = 10 ** (rating1 / 400)
     t2 = 10 ** (rating2 / 400)
-    e1 = (t1 / (t1 + t2))
-    e2 = (t2 / (t1 + t2))
+    e1 = t1 / (t1 + t2)
+    e2 = t2 / (t1 + t2)
     s1 = 1 if player1_win else 0
     s2 = 0 if player1_win else 1
     new_rating1 = rating1 + int(round(32 * (s1 - e1)))
@@ -135,9 +154,9 @@ def calculate_new_elo_ratings(rating1, rating2, player1_win):
     return new_rating1, new_rating2
 
 
-
 class PlayerDoesNotExist(Exception):
     pass
+
 
 class InvalidMatchRegistration(Exception):
     pass

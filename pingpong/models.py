@@ -1,35 +1,23 @@
 from dataclasses import dataclass
 
-from pingpong.constants import PING_PONG, DOMINANT, NON_DOMINANT
+from pingpong.constants import DOMINANT, NON_DOMINANT, PING_PONG
 
 
-class Player():
+class Player:
     def __init__(self, id: str, name: str):
         self.id = id
         self.name = name
-        self.elo_ratings = {DOMINANT: {}, NON_DOMINANT: {}}
+        self._elo_ratings: dict[str, dict[str, int]] = {DOMINANT: {}, NON_DOMINANT: {}}
 
-    def get_id(self):
-        return self.id
+    def get_rating(self, sport: str = PING_PONG, hand: str = DOMINANT) -> int:
+        return self._elo_ratings[hand].get(sport, 1000)
 
-    def get_name(self):
-        return self.name
-
-    def get_rating(self, sport: str=PING_PONG, hand=DOMINANT):
-        return self.elo_ratings[hand].get(sport, 1000)
-
-    def set_id(self, id):
-        self.id = id
-
-    def set_name(self, name):
-        self.name = name
-
-    def set_rating(self, elo_rating, sport: str=PING_PONG, hand=DOMINANT):
-        self.elo_ratings[hand][sport] = elo_rating
+    def set_rating(self, elo_rating: int, sport: str = PING_PONG, hand: str = DOMINANT) -> None:
+        self._elo_ratings[hand][sport] = elo_rating
 
 
 @dataclass
-class Match():
+class Match:
     player1_id: str
     player2_id: str
     player1_score: int
