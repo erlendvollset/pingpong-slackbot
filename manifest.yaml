@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ping-pong-bot
+  name: ping-pong-bot
+  namespace: ping-pong
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: ping-pong-bot
+  template:
+    metadata:
+      labels:
+        app: ping-pong-bot
+    spec:
+      containers:
+      - envFrom:
+          - secretRef: 
+              name: pingpong
+        env:
+          - name: COGNITE_CLIENT_NAME
+            value: pingpong-slackbot
+          - name: COGNITE_PROJECT 
+            value: python-sdk-test 
+          - name: COGNITE_BASE_URL
+            value: https://greenfield.cognitedata.com 
+        image: eu.gcr.io/cognitedata-development/pingpong-slackbot:latest7
+        name: ping-pong-bot
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 800Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
