@@ -5,30 +5,36 @@ from typing import Optional
 from cognite.client import CogniteClient
 from cognite.client.data_classes import Asset, Event, TimeSeries
 
-from pingpong.constants import DOMINANT, HAND, MATCH, PING_PONG, ROOT_ASSET_EXTERNAL_ID, SPORT, STARTING_RATING
-from pingpong.models import Match, Player
+from pingpong.data_classes import Hand, Match, Player, Sport
+
+STARTING_RATING = 1000
+SPORT = "Sport"
+MATCH = "Match"
+HAND = "Hand"
 
 
 class CDFBackend:
-    def __init__(self, sport: str = PING_PONG):
-        self.client = CogniteClient()
+    def __init__(self, sport: Sport, root_asset_external_id: str, cognite_client: CogniteClient) -> None:
         self.sport = sport
-        self.root_asset = self.client.assets.retrieve(external_id=ROOT_ASSET_EXTERNAL_ID)
+        self.root_asset_external_id = root_asset_external_id
+        self.client = cognite_client
+
+        self.root_asset = self.client.assets.retrieve(external_id=root_asset_external_id)
         if self.root_asset is None:
             self.root_asset = self.client.assets.create(
-                Asset(external_id=ROOT_ASSET_EXTERNAL_ID, name=ROOT_ASSET_EXTERNAL_ID)
+                Asset(external_id=root_asset_external_id, name=root_asset_external_id)
             )
 
     def wipe(self) -> None:
         time_series_to_delete = []
-        for asset in self.client.assets(root_external_ids=[ROOT_ASSET_EXTERNAL_ID]):
+        for asset in self.client.assets(root_external_ids=[self.root_asset_external_id]):
             time_series_to_delete.extend([ts.id for ts in asset.time_series()])
         self.client.time_series.delete(time_series_to_delete)
 
-        events_to_delete = [event.id for event in self.client.events(type=MATCH, subtype=PING_PONG)]
+        events_to_delete = [event.id for event in self.client.events(type=MATCH, subtype=self.sport)]
         self.client.events.delete(events_to_delete)
 
-        self.client.assets.delete(external_id=ROOT_ASSET_EXTERNAL_ID, recursive=True)
+        self.client.assets.delete(external_id=self.root_asset_external_id, recursive=True)
 
     def create_player(self, player: Player) -> None:
         self.client.assets.create(Asset(external_id=player.id, name=player.name, parent_id=self.root_asset.id))
@@ -44,7 +50,7 @@ class CDFBackend:
         player = Player(asset.external_id, asset.name)
         time_series = self.client.time_series.list(asset_external_ids=[player.id])
         for ts in time_series:
-            if ts.metadata.get(SPORT) != self.sport:
+            if ts.metadata.get(SPORT) != self.sport.value:
                 continue
             hand = ts.metadata.get(HAND)
             if hand is not None:
@@ -57,7 +63,7 @@ class CDFBackend:
         return player
 
     def update_player(
-        self, id: str, new_name: Optional[str] = None, new_rating: Optional[int] = None, hand: str = DOMINANT
+        self, id: str, new_name: Optional[str] = None, new_rating: Optional[int] = None, hand: Hand = Hand.DOMINANT
     ) -> Player:
         player_asset = self.client.assets.retrieve(external_id=id)
         if new_name:
@@ -75,17 +81,18 @@ class CDFBackend:
                     TimeSeries(
                         name=f"{player_asset.name} {self.sport} {hand} ELO",
                         asset_id=player_asset.id,
-                        metadata={SPORT: self.sport, HAND: hand},
+                        metadata={SPORT: self.sport.value, HAND: hand.value},
                     )
                 )
             self.client.datapoints.insert(
                 datapoints=[(int(time.time() * 1000), new_rating)],
                 id=rating_time_series.id,
             )
-        return self._player_from_asset(self.client.assets.update(player_asset))
+        updated_asset = self.client.assets.update(player_asset)
+        return self._player_from_asset(updated_asset)
 
     def create_match(self, match: Match) -> None:
-        self.client.events.create(Event(type=MATCH, subtype=match.sport, metadata=asdict(match)))
+        self.client.events.create(Event(type=MATCH, subtype=match.sport.value, metadata=asdict(match)))
 
     def get_matches(self) -> list[Match]:
         events = self.client.events.list(limit=-1, type=MATCH, subtype=self.sport)

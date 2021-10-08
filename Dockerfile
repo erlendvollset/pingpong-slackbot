@@ -11,5 +11,4 @@ RUN poetry export --without-hashes -f requirements.txt | pip3 install --force-re
 
 ADD pingpong /app/pingpong
 
-CMD python pingpong/slackbot.py
-
+CMD python pingpong/main.py

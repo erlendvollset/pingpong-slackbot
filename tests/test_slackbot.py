@@ -1,7 +1,7 @@
 import pytest
 
 from pingpong import pingpong_service, responses, slackbot
-from pingpong.models import Player
+from pingpong.data_classes import Player
 from pingpong.slackbot import BotCommand
 
 PINGPONG_BOT_ID = "U9FID819D"
