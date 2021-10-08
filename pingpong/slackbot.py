@@ -11,6 +11,7 @@ from slack_sdk.rtm_v2 import RTMClient
 from pingpong import pingpong_service, responses
 from pingpong.data_classes import Sport
 from pingpong.pingpong_service import PingPongService
+from pingpong.util import BaseEnum
 
 logging.basicConfig(level="INFO")
 log = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ MENTION_REGEX = f"^{PLAYER_REGEX}(.*)"
 COMMAND_REGEX = "([a-zA-Z]*)(\s+.*)?"
 
 
-class CommandType(Enum):
+class CommandType(BaseEnum):
     NAME = "name"
     HELP = "help"
     MATCH = "match"
