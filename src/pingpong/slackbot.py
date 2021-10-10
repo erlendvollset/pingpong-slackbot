@@ -130,7 +130,7 @@ class PingPongSlackBot:
                     return responses.name_taken()
             else:
                 return responses.name(player.name)
-        elif bot_command.command_type == CommandType.MATCH and bot_command.command_value is not None:
+        elif bot_command.command_type == CommandType.MATCH:
             return self.handle_match_command(bot_command.command_value)
         elif bot_command.command_type == CommandType.STATS:
             name = bot_command.command_value
@@ -150,7 +150,9 @@ class PingPongSlackBot:
             # return responses.match_undone(w_name, w_rating, l_name, l_rating)
         return responses.unknown_command()
 
-    def handle_match_command(self, match_string: str) -> str:
+    def handle_match_command(self, match_string: Optional[str]) -> str:
+        if match_string is None:
+            return responses.invalid_match_command()
         parsed_match_string = re.match(MATCH_REGEX, match_string)
         if not parsed_match_string:
             return responses.invalid_match_command()

@@ -27,7 +27,7 @@ spec:
             value: python-sdk-test 
           - name: COGNITE_BASE_URL
             value: https://greenfield.cognitedata.com 
-        image: eu.gcr.io/cognitedata-development/pingpong-slackbot:latest9
+        image: eu.gcr.io/cognitedata-development/pingpong-slackbot:666
         name: ping-pong-bot
         resources:
           limits:
