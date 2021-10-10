@@ -19,22 +19,24 @@ class BackendInMemory(Backend):
         self._players.append(player)
         return copy(player)
 
-    def get_players(self, ids: list[str]) -> list[Player]:
-        ids_set = set(ids)
-        return list(filter(lambda p: p.id in ids_set, self._players))
+    def get_player(self, id: str) -> Optional[Player]:
+        players = list(filter(lambda p: p.id == id, self._players))
+        if len(players) == 0:
+            return None
+        return players[0]
 
     def list_players(self) -> list[Player]:
         return [p for p in self._players]
 
     def update_player(self, id: str, name: Optional[str] = None, ratings: Optional[Ratings] = None) -> Player:
         idx = [p.id for p in self._players].index(id)
-        player = self._players[idx]
+        player = copy(self._players[idx])
         if name:
             player.name = name
         if ratings:
             player.ratings = ratings
         self._players[idx] = player
-        return copy(player)
+        return player
 
     def create_match(self, match: Match) -> Match:
         self._matches.append(match)

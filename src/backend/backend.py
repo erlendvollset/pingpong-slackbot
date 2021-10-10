@@ -15,7 +15,7 @@ class Backend(ABC):
         ...
 
     @abstractmethod
-    def get_players(self, ids: list[str]) -> list[Player]:
+    def get_player(self, id: str) -> Optional[Player]:
         ...
 
     @abstractmethod

@@ -1,5 +1,5 @@
 import time
-from dataclasses import asdict, fields
+from dataclasses import fields
 from enum import Enum
 from typing import Optional
 
@@ -52,11 +52,11 @@ class BackendCdf(Backend):
         )
         return self._player_from_asset(asset)
 
-    def get_players(self, ids: list[str]) -> list[Player]:
-        return [self._player_from_asset(asset) for asset in self._get_player_assets(*ids)]
-
-    def _get_player_assets(self, *external_id: str) -> list[Asset]:
-        return [asset for asset in self.client.assets.retrieve_multiple(external_ids=list(external_id))]
+    def get_player(self, id: str) -> Optional[Player]:
+        asset = self.client.assets.retrieve(external_id=id)
+        if asset:
+            return self._player_from_asset(asset)
+        return None
 
     def list_players(self) -> list[Player]:
         player_assets = [
@@ -101,8 +101,13 @@ class BackendCdf(Backend):
     def create_match(self, match: Match) -> Match:
         event_metadata = self._match_to_metadata(match)
         asset_ids = [a.id for a in self._get_player_assets(match.player1_id, match.player2_id)]
-        created_event = self.client.events.create(Event(type=MATCH, subtype=match.sport.value, metadata=event_metadata, asset_ids=asset_ids))
+        created_event = self.client.events.create(
+            Event(type=MATCH, subtype=match.sport.value, metadata=event_metadata, asset_ids=asset_ids)
+        )
         return self._metadata_to_match(created_event.metadata)
+
+    def _get_player_assets(self, *external_id: str) -> list[Asset]:
+        return [asset for asset in self.client.assets.retrieve_multiple(external_ids=list(external_id))]
 
     @staticmethod
     def _match_to_metadata(match: Match) -> dict[str, str]:
@@ -130,5 +135,7 @@ class BackendCdf(Backend):
         )
 
     def list_matches(self, sport: Sport) -> list[Match]:
-        events = self.client.events.list(limit=-1, type=MATCH, subtype=sport.value)
+        events = self.client.events.list(
+            limit=-1, type=MATCH, subtype=sport.value, root_asset_external_ids=[self.root_asset_external_id]
+        )
         return [self._metadata_to_match(e.metadata) for e in events]

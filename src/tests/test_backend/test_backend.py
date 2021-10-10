@@ -24,6 +24,7 @@ def cognite_client() -> CogniteClient:
 def random_identifier(length: int) -> str:
     return "PingPongSlackBotTest:" + "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
+
 @pytest.fixture(params=[BackendInMemory, BackendCdf])
 def backend(request: SubRequest, cognite_client: CogniteClient) -> Iterator[Backend]:
     if request.param == BackendInMemory:
@@ -83,10 +84,13 @@ class TestBackend:
         created_player = backend.create_player(player)
         assert player == created_player
 
-    def test_get_players(self, backend: Backend, created_players: list[Player]) -> None:
-        res = backend.get_players([created_players[1].id])
-        assert len(res) == 1
-        assert res[0] == created_players[1]
+    def test_get_player(self, backend: Backend, created_players: list[Player]) -> None:
+        res = backend.get_player(created_players[1].id)
+        assert res == created_players[1]
+
+    def test_get_player_does_not_exist(self, backend: Backend) -> None:
+        res = backend.get_player("nothing")
+        assert res is None
 
     @retry_ec
     def test_list_players(self, backend: Backend, created_players: list[Player]) -> None:

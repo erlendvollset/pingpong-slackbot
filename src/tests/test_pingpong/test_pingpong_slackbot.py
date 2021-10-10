@@ -170,14 +170,18 @@ class TestPingPongSlackbot:
         new_name = "erlendnew"
         response = slack_user_emulator.send_name_update_message(new_name)
         assert response == responses.name_updated(new_name)
-        assert backend.get_players([USER_ID])[0].name == "erlendnew"
+        player = backend.get_player(USER_ID)
+        assert player is not None
+        assert player.name == "erlendnew"
 
     def test_update_name_exists(
         self, slack_user_emulator: SlackUserEmulator, created_players: list[Player], backend: Backend
     ) -> None:
         response = slack_user_emulator.send_name_update_message(created_players[-1].name)
         assert response == responses.name_taken()
-        assert backend.get_players([USER_ID])[0].name == "erlend"
+        player = backend.get_player(USER_ID)
+        assert player is not None
+        assert player.name == "erlend"
 
     def test_add_match(
         self, slack_user_emulator: SlackUserEmulator, created_players: list[Player], backend: Backend
@@ -201,8 +205,10 @@ class TestPingPongSlackbot:
             Hand.DOMINANT,
             Hand.DOMINANT,
         )
-        p1_after = backend.get_players([p1.id])[0]
-        p2_after = backend.get_players([p2.id])[0]
+        p1_after = backend.get_player(p1.id)
+        p2_after = backend.get_player(p2.id)
+        assert p1_after is not None
+        assert p2_after is not None
         assert p1.ratings.get(Hand.DOMINANT, Sport.PING_PONG) < p1_after.ratings.get(Hand.DOMINANT, Sport.PING_PONG)
         assert p2.ratings.get(Hand.DOMINANT, Sport.PING_PONG) > p2_after.ratings.get(Hand.DOMINANT, Sport.PING_PONG)
 
@@ -227,8 +233,10 @@ class TestPingPongSlackbot:
             Hand.NON_DOMINANT,
             Hand.DOMINANT,
         )
-        p1_after = backend.get_players([p1.id])[0]
-        p2_after = backend.get_players([p2.id])[0]
+        p1_after = backend.get_player(p1.id)
+        p2_after = backend.get_player(p2.id)
+        assert p1_after is not None
+        assert p2_after is not None
         assert p1.ratings.get(Hand.NON_DOMINANT, Sport.PING_PONG) > p1_after.ratings.get(
             Hand.NON_DOMINANT, Sport.PING_PONG
         )
@@ -243,12 +251,15 @@ class TestPingPongSlackbot:
 
         matches = backend.list_matches(Sport.PING_PONG)
         assert len(matches) == 0
-        p1_after = backend.get_players([p1.id])[0]
+        p1_after = backend.get_player(p1.id)
+        assert p1_after is not None
         assert p1.ratings.get(Hand.NON_DOMINANT, Sport.PING_PONG) == p1_after.ratings.get(
             Hand.NON_DOMINANT, Sport.PING_PONG
         )
 
-    def test_get_stats_no_active_players(self, slack_user_emulator: SlackUserEmulator, created_players: list[Player]):
+    def test_get_stats_no_active_players(
+        self, slack_user_emulator: SlackUserEmulator, created_players: list[Player]
+    ) -> None:
         response = slack_user_emulator.send_stats_message()
         assert response == responses.stats(0, "")
 
@@ -260,7 +271,7 @@ class TestPingPongSlackbot:
         response = slack_user_emulator.send_stats_message()
         assert response == responses.stats(2, "1. erlend (1001)\n2. name3 (999)")
 
-    def test_get_player_stats(self, slack_user_emulator: SlackUserEmulator, created_players: list[Player]):
+    def test_get_player_stats(self, slack_user_emulator: SlackUserEmulator, created_players: list[Player]) -> None:
         p1 = created_players[0]
         p2 = created_players[-1]
         slack_user_emulator.send_match_message(p1.id, p2.id, 50, 100)

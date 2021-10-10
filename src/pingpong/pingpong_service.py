@@ -22,9 +22,9 @@ class PingPongService:
         return self._backend.create_player(player)
 
     def get_player(self, player_id: str) -> Player:
-        players = self._backend.get_players(ids=[player_id])
-        if players:
-            return players[0]
+        player = self._backend.get_player(player_id)
+        if player:
+            return player
         raise PlayerDoesNotExist()
 
     def update_display_name(self, player: Player, new_name: str) -> bool:
@@ -44,40 +44,34 @@ class PingPongService:
         p1 = self.get_player(p1_id)
         p2 = self.get_player(p2_id)
 
-        if p1 and p2:
-            match = Match(
-                p1_id,
-                p2_id,
-                score_p1,
-                score_p2,
-                p1.ratings.get(p1_hand, Sport.PING_PONG),
-                p2.ratings.get(p2_hand, Sport.PING_PONG),
-                sport=Sport.PING_PONG,
-                player1_hand=p1_hand,
-                player2_hand=p2_hand,
-            )
-            self._backend.create_match(match)
+        match = Match(
+            p1_id,
+            p2_id,
+            score_p1,
+            score_p2,
+            p1.ratings.get(p1_hand, Sport.PING_PONG),
+            p2.ratings.get(p2_hand, Sport.PING_PONG),
+            sport=Sport.PING_PONG,
+            player1_hand=p1_hand,
+            player2_hand=p2_hand,
+        )
+        self._backend.create_match(match)
 
-            new_rating1, new_rating2 = RatingCalculator.calculate_new_elo_ratings(
-                rating1=p1.ratings.get(p1_hand, Sport.PING_PONG),
-                rating2=p2.ratings.get(p2_hand, Sport.PING_PONG),
-                player1_win=int(match.player1_score) > int(match.player2_score),
-            )
-            new_p1 = self._backend.update_player(
-                p1.id, ratings=p1.ratings.update(p1_hand, Sport.PING_PONG, new_rating1)
-            )
-            new_p2 = self._backend.update_player(
-                p2.id, ratings=p2.ratings.update(p2_hand, Sport.PING_PONG, new_rating2)
-            )
+        new_rating1, new_rating2 = RatingCalculator.calculate_new_elo_ratings(
+            rating1=p1.ratings.get(p1_hand, Sport.PING_PONG),
+            rating2=p2.ratings.get(p2_hand, Sport.PING_PONG),
+            player1_win=int(match.player1_score) > int(match.player2_score),
+        )
+        new_p1 = self._backend.update_player(p1.id, ratings=p1.ratings.update(p1_hand, Sport.PING_PONG, new_rating1))
+        new_p2 = self._backend.update_player(p2.id, ratings=p2.ratings.update(p2_hand, Sport.PING_PONG, new_rating2))
 
-            updated_players = (
-                new_p1,
-                new_p1.ratings.get(p1_hand, Sport.PING_PONG) - p1.ratings.get(p1_hand, Sport.PING_PONG),
-                new_p2,
-                new_p2.ratings.get(p2_hand, Sport.PING_PONG) - p2.ratings.get(p2_hand, Sport.PING_PONG),
-            )
-            return updated_players
-        raise PlayerDoesNotExist()
+        updated_players = (
+            new_p1,
+            new_p1.ratings.get(p1_hand, Sport.PING_PONG) - p1.ratings.get(p1_hand, Sport.PING_PONG),
+            new_p2,
+            new_p2.ratings.get(p2_hand, Sport.PING_PONG) - p2.ratings.get(p2_hand, Sport.PING_PONG),
+        )
+        return updated_players
 
     def undo_last_match(self) -> tuple[Optional[str], Optional[int], Optional[str], Optional[int]]:
         matches = self._backend.list_matches(sport=Sport.PING_PONG)

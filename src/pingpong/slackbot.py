@@ -88,7 +88,7 @@ class PingPongSlackBot:
 
         info = self.rtm_client.web_client.rtm_connect()
         self.ping_pong_bot_id = info["self"]["id"]
-        self.rtm_client.on("message")(self.handle)
+        self.rtm_client.on("message")(lambda client, event: self.handle(client, event))
 
     def start(self) -> None:
         log.info("Starting pingpong bot")
@@ -130,7 +130,7 @@ class PingPongSlackBot:
                     return responses.name_taken()
             else:
                 return responses.name(player.name)
-        elif bot_command.command_type == CommandType.MATCH:
+        elif bot_command.command_type == CommandType.MATCH and bot_command.command_value is not None:
             return self.handle_match_command(bot_command.command_value)
         elif bot_command.command_type == CommandType.STATS:
             name = bot_command.command_value
@@ -144,11 +144,11 @@ class PingPongSlackBot:
                 return responses.stats(
                     self.ping_pong_service.get_total_matches(), self.ping_pong_service.get_leaderboard()
                 )
-        if bot_command.command_type == CommandType.UNDO:
+        elif bot_command.command_type == CommandType.UNDO:
             return responses.unknown_command()
             # w_name, w_rating, l_name, l_rating = pingpong_service.undo_last_match()
             # return responses.match_undone(w_name, w_rating, l_name, l_rating)
-        raise RuntimeError("illegal state")
+        return responses.unknown_command()
 
     def handle_match_command(self, match_string: str) -> str:
         parsed_match_string = re.match(MATCH_REGEX, match_string)
