@@ -31,5 +31,5 @@ class Backend(ABC):
         ...
 
     @abstractmethod
-    def get_matches(self, sport: Sport) -> list[Match]:
+    def list_matches(self, sport: Sport) -> list[Match]:
         ...

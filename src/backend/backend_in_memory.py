@@ -40,5 +40,5 @@ class BackendInMemory(Backend):
         self._matches.append(match)
         return copy(match)
 
-    def get_matches(self, sport: Sport) -> list[Match]:
+    def list_matches(self, sport: Sport) -> list[Match]:
         return [match for match in self._matches if match.sport == sport]

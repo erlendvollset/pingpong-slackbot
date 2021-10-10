@@ -1,15 +1,39 @@
+import random
+import string
+from typing import Iterator
+
 import pytest
 from _pytest.fixtures import SubRequest
+from cognite.client import CogniteClient
+from tenacity import retry, retry_if_exception_type, stop_after_delay
 
 from src.backend.backend import Backend
+from src.backend.backend_cdf import BackendCdf
 from src.backend.backend_in_memory import BackendInMemory
 from src.backend.data_classes import Hand, Match, Player, Sport
 from src.backend.rating import Ratings
 
+retry_ec = retry(stop=stop_after_delay(30), retry=retry_if_exception_type(AssertionError))
 
-@pytest.fixture(params=[BackendInMemory])
-def backend(request: SubRequest) -> Backend:
-    return request.param()
+
+@pytest.fixture(scope="session")
+def cognite_client() -> CogniteClient:
+    return CogniteClient()
+
+
+def random_identifier(length: int) -> str:
+    return "PingPongSlackBotTest:" + "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+@pytest.fixture(params=[BackendInMemory, BackendCdf])
+def backend(request: SubRequest, cognite_client: CogniteClient) -> Iterator[Backend]:
+    if request.param == BackendInMemory:
+        backend: Backend = BackendInMemory()
+    elif request.param == BackendCdf:
+        backend = BackendCdf(random_identifier(10), cognite_client)
+    else:
+        raise RuntimeError(f"Invalid backend, {request.param}")
+    yield backend
+    backend.wipe()
 
 
 @pytest.fixture
@@ -64,6 +88,7 @@ class TestBackend:
         assert len(res) == 1
         assert res[0] == created_players[1]
 
+    @retry_ec
     def test_list_players(self, backend: Backend, created_players: list[Player]) -> None:
         res = backend.list_players()
         assert len(res) == len(created_players)
@@ -102,11 +127,12 @@ class TestBackend:
         created_match = backend.create_match(match)
         assert created_match == match
 
-    def test_get_matches(self, backend: Backend, created_matches: list[Match]) -> None:
-        res = backend.get_matches(sport=Sport.PING_PONG)
+    @retry_ec
+    def test_list_matches(self, backend: Backend, created_matches: list[Match]) -> None:
+        res = backend.list_matches(sport=Sport.PING_PONG)
         assert len(res) == 1
         assert res[0] in created_matches
 
-        res = backend.get_matches(sport=Sport.SQUASH)
+        res = backend.list_matches(sport=Sport.SQUASH)
         assert len(res) == 1
         assert res[0] in created_matches

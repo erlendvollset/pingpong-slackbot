@@ -1,12 +1,13 @@
 import time
-from dataclasses import asdict
+from dataclasses import asdict, fields
+from enum import Enum
 from typing import Optional
 
 from cognite.client import CogniteClient
 from cognite.client.data_classes import Asset, Event, TimeSeries
 
 from src.backend.backend import Backend
-from src.backend.data_classes import Match, Player, Sport
+from src.backend.data_classes import Hand, Match, Player, Sport
 from src.backend.rating import Ratings
 
 STARTING_RATING = 1000
@@ -52,10 +53,15 @@ class BackendCdf(Backend):
         return self._player_from_asset(asset)
 
     def get_players(self, ids: list[str]) -> list[Player]:
-        return [self._player_from_asset(asset) for asset in self.client.assets.retrieve(external_id=ids)]
+        return [self._player_from_asset(asset) for asset in self._get_player_assets(*ids)]
+
+    def _get_player_assets(self, *external_id: str) -> list[Asset]:
+        return [asset for asset in self.client.assets.retrieve_multiple(external_ids=list(external_id))]
 
     def list_players(self) -> list[Player]:
-        player_assets = self.client.assets.list(limit=-1, root_ids=[self.root_asset.id])
+        player_assets = [
+            p for p in self.client.assets.list(limit=-1, root_ids=[self.root_asset.id]) if p.id != self.root_asset.id
+        ]
         return [self._player_from_asset(asset) for asset in player_assets]
 
     def _player_from_asset(self, asset: Asset) -> Player:
@@ -93,9 +99,36 @@ class BackendCdf(Backend):
             self.client.datapoints.insert(id=ts_id, datapoints=[(int(time.time() * 1000), new_rating)])
 
     def create_match(self, match: Match) -> Match:
-        event = self.client.events.create(Event(type=MATCH, subtype=match.sport.value, metadata=asdict(match)))
-        return Match(**event.metadata)
+        event_metadata = self._match_to_metadata(match)
+        asset_ids = [a.id for a in self._get_player_assets(match.player1_id, match.player2_id)]
+        created_event = self.client.events.create(Event(type=MATCH, subtype=match.sport.value, metadata=event_metadata, asset_ids=asset_ids))
+        return self._metadata_to_match(created_event.metadata)
 
-    def get_matches(self, sport: Sport) -> list[Match]:
+    @staticmethod
+    def _match_to_metadata(match: Match) -> dict[str, str]:
+        metadata = {}
+        for field in fields(match):
+            value = getattr(match, field.name)
+            if isinstance(value, (int, str)):
+                metadata[field.name] = str(value)
+            elif isinstance(value, Enum):
+                metadata[field.name] = str(value.value)
+        return metadata
+
+    @staticmethod
+    def _metadata_to_match(metadata: dict[str, str]) -> Match:
+        return Match(
+            player1_id=metadata["player1_id"],
+            player2_id=metadata["player2_id"],
+            player1_score=int(metadata["player1_score"]),
+            player2_score=int(metadata["player2_score"]),
+            player1_rating=int(metadata["player1_rating"]),
+            player2_rating=int(metadata["player2_rating"]),
+            sport=Sport(metadata["sport"]),
+            player1_hand=Hand(metadata["player1_hand"]),
+            player2_hand=Hand(metadata["player2_hand"]),
+        )
+
+    def list_matches(self, sport: Sport) -> list[Match]:
         events = self.client.events.list(limit=-1, type=MATCH, subtype=sport.value)
-        return [Match(**e.metadata) for e in events]
+        return [self._metadata_to_match(e.metadata) for e in events]

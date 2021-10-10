@@ -80,7 +80,7 @@ class PingPongService:
         raise PlayerDoesNotExist()
 
     def undo_last_match(self) -> tuple[Optional[str], Optional[int], Optional[str], Optional[int]]:
-        matches = self._backend.get_matches(sport=Sport.PING_PONG)
+        matches = self._backend.list_matches(sport=Sport.PING_PONG)
 
         if not matches or True:  # Todo: fix undo
             return None, None, None, None
@@ -105,7 +105,7 @@ class PingPongService:
 
     def get_leaderboard(self) -> str:
         players = self._backend.list_players()
-        matches = self._backend.get_matches(sport=Sport.PING_PONG)
+        matches = self._backend.list_matches(sport=Sport.PING_PONG)
         active_players = [p for p in players if self.__has_played_match(matches, p)]
         active_players = sorted(
             active_players, key=lambda p: p.ratings.get(Hand.DOMINANT, Sport.PING_PONG), reverse=True
@@ -126,7 +126,7 @@ class PingPongService:
         return False
 
     def get_total_matches(self) -> int:
-        matches = self._backend.get_matches(sport=Sport.PING_PONG)
+        matches = self._backend.list_matches(sport=Sport.PING_PONG)
         return len(matches)
 
     def get_player_stats(self, name: str) -> tuple[int, int, int, str]:
@@ -137,7 +137,7 @@ class PingPongService:
             raise PlayerDoesNotExist()
         wins = 0
         losses = 0
-        matches = self._backend.get_matches(sport=Sport.PING_PONG)
+        matches = self._backend.list_matches(sport=Sport.PING_PONG)
         for match in matches:
             if match.player1_id == player.id:
                 if match.player1_score > match.player2_score:
