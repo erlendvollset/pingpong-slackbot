@@ -16,6 +16,9 @@ include_trailing_comma=true    # corresponds to -tc flag
 skip_glob = '^((?!py$).)*$'    # isort all Python files
 float_to_top=true
 
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --ignore=bulk-import.py"
+
 [tool.poetry.dependencies]
 python = "^3.10"
 slack-sdk = "^3.11.2"

@@ -1,7 +1,8 @@
 from typing import Optional
 
-from pingpong.cdf_backend import CDFBackend
-from pingpong.data_classes import Hand, Match, Player, Sport
+from src.backend.backend import Backend
+from src.backend.data_classes import Hand, Match, Player, Sport
+from src.backend.rating import RatingCalculator, Ratings
 
 
 class PlayerDoesNotExist(Exception):
@@ -13,35 +14,33 @@ class InvalidMatchRegistration(Exception):
 
 
 class PingPongService:
-    def __init__(self, cdf_backend: CDFBackend) -> None:
-        self.cdf_backend = cdf_backend
+    def __init__(self, backend: Backend) -> None:
+        self._backend = backend
 
-    def add_new_player(self, id: str) -> None:
-        player = Player(id, id)
-        self.cdf_backend.create_player(player)
+    def add_new_player(self, id: str) -> Player:
+        player = Player(id, id, Ratings())
+        return self._backend.create_player(player)
 
     def get_player(self, player_id: str) -> Player:
-        players = self.cdf_backend.get_players(ids=[player_id])
+        players = self._backend.get_players(ids=[player_id])
         if players:
             return players[0]
         raise PlayerDoesNotExist()
 
     def update_display_name(self, player: Player, new_name: str) -> bool:
-        players = self.cdf_backend.list_players()
+        players = self._backend.list_players()
         names = [p.name.lower() for p in players]
         if new_name.lower() in names:
             return False
-        self.cdf_backend.update_player(player.id, new_name=new_name)
+        self._backend.update_player(player.id, name=new_name)
         return True
 
     def add_match(
-        self, p1_id: str, nd1: bool, p2_id: str, nd2: bool, score_p1: int, score_p2: int
+        self, p1_id: str, p1_hand: Hand, p2_id: str, p2_hand: Hand, score_p1: int, score_p2: int
     ) -> tuple[Player, int, Player, int]:
         if p1_id == p2_id or int(score_p1) == int(score_p2):
             raise InvalidMatchRegistration()
 
-        p1_hand = Hand.NON_DOMINANT if nd1 else Hand.DOMINANT
-        p2_hand = Hand.NON_DOMINANT if nd2 else Hand.DOMINANT
         p1 = self.get_player(p1_id)
         p2 = self.get_player(p2_id)
 
@@ -51,33 +50,37 @@ class PingPongService:
                 p2_id,
                 score_p1,
                 score_p2,
-                p1.get_rating(sport=Sport.PING_PONG),
-                p2.get_rating(sport=Sport.PING_PONG),
+                p1.ratings.get(p1_hand, Sport.PING_PONG),
+                p2.ratings.get(p2_hand, Sport.PING_PONG),
                 sport=Sport.PING_PONG,
                 player1_hand=p1_hand,
                 player2_hand=p2_hand,
             )
-            self.cdf_backend.create_match(match)
+            self._backend.create_match(match)
 
-            new_rating1, new_rating2 = self.calculate_new_elo_ratings(
-                rating1=p1.get_rating(Sport.PING_PONG, p1_hand),
-                rating2=p2.get_rating(Sport.PING_PONG, p2_hand),
+            new_rating1, new_rating2 = RatingCalculator.calculate_new_elo_ratings(
+                rating1=p1.ratings.get(p1_hand, Sport.PING_PONG),
+                rating2=p2.ratings.get(p2_hand, Sport.PING_PONG),
                 player1_win=int(match.player1_score) > int(match.player2_score),
             )
-            new_p1 = self.cdf_backend.update_player(p1.id, new_rating=new_rating1, hand=p1_hand)
-            new_p2 = self.cdf_backend.update_player(p2.id, new_rating=new_rating2, hand=p2_hand)
+            new_p1 = self._backend.update_player(
+                p1.id, ratings=p1.ratings.update(p1_hand, Sport.PING_PONG, new_rating1)
+            )
+            new_p2 = self._backend.update_player(
+                p2.id, ratings=p2.ratings.update(p2_hand, Sport.PING_PONG, new_rating2)
+            )
 
             updated_players = (
                 new_p1,
-                new_p1.get_rating(Sport.PING_PONG, p1_hand) - p1.get_rating(Sport.PING_PONG, p1_hand),
+                new_p1.ratings.get(p1_hand, Sport.PING_PONG) - p1.ratings.get(p1_hand, Sport.PING_PONG),
                 new_p2,
-                new_p2.get_rating(Sport.PING_PONG, p2_hand) - p2.get_rating(Sport.PING_PONG, p2_hand),
+                new_p2.ratings.get(p2_hand, Sport.PING_PONG) - p2.ratings.get(p2_hand, Sport.PING_PONG),
             )
             return updated_players
         raise PlayerDoesNotExist()
 
     def undo_last_match(self) -> tuple[Optional[str], Optional[int], Optional[str], Optional[int]]:
-        matches = self.cdf_backend.get_matches()
+        matches = self._backend.get_matches(sport=Sport.PING_PONG)
 
         if not matches or True:  # Todo: fix undo
             return None, None, None, None
@@ -96,17 +99,22 @@ class PingPongService:
             loser_prev_rating = latest_match.player1_rating
 
         # CDF_BACKEND.delete_matches(ids=[latest_match.id])
-        self.cdf_backend.update_player(winner.id, new_rating=winner_prev_rating)
-        self.cdf_backend.update_player(loser.id, new_rating=loser_prev_rating)
+        self._backend.update_player(winner.id, sport=Sport.PING_PONG, new_rating=winner_prev_rating)
+        self._backend.update_player(loser.id, sport=Sport.PING_PONG, new_rating=loser_prev_rating)
         return winner.name, winner_prev_rating, loser.name, loser_prev_rating
 
     def get_leaderboard(self) -> str:
-        players = self.cdf_backend.list_players()
-        matches = self.cdf_backend.get_matches()
+        players = self._backend.list_players()
+        matches = self._backend.get_matches(sport=Sport.PING_PONG)
         active_players = [p for p in players if self.__has_played_match(matches, p)]
-        active_players = sorted(active_players, key=lambda p: p.get_rating(Sport.PING_PONG), reverse=True)
+        active_players = sorted(
+            active_players, key=lambda p: p.ratings.get(Hand.DOMINANT, Sport.PING_PONG), reverse=True
+        )
         printable_leaderboard = "\n".join(
-            ["{}. {} ({})".format(i + 1, p.name, p.get_rating(Sport.PING_PONG)) for i, p in enumerate(active_players)]
+            [
+                "{}. {} ({})".format(i + 1, p.name, p.ratings.get(Hand.DOMINANT, Sport.PING_PONG))
+                for i, p in enumerate(active_players)
+            ]
         )
         return printable_leaderboard
 
@@ -118,18 +126,18 @@ class PingPongService:
         return False
 
     def get_total_matches(self) -> int:
-        matches = self.cdf_backend.get_matches()
+        matches = self._backend.get_matches(sport=Sport.PING_PONG)
         return len(matches)
 
     def get_player_stats(self, name: str) -> tuple[int, int, int, str]:
-        players = self.cdf_backend.get_players([name])
+        players = self._backend.list_players()
         try:
             player = next(player for player in players if player.name == name)
         except StopIteration:
             raise PlayerDoesNotExist()
         wins = 0
         losses = 0
-        matches = self.cdf_backend.get_matches()
+        matches = self._backend.get_matches(sport=Sport.PING_PONG)
         for match in matches:
             if match.player1_id == player.id:
                 if match.player1_score > match.player2_score:
@@ -142,16 +150,4 @@ class PingPongService:
                 else:
                     losses += 1
         wl_ratio = "{:.2f}".format(wins / losses) if losses > 0 else "∞"
-        return player.get_rating(Sport.PING_PONG), wins, losses, wl_ratio
-
-    @staticmethod
-    def calculate_new_elo_ratings(rating1: int, rating2: int, player1_win: bool) -> tuple[int, int]:
-        t1 = 10 ** (rating1 / 400)
-        t2 = 10 ** (rating2 / 400)
-        e1 = t1 / (t1 + t2)
-        e2 = t2 / (t1 + t2)
-        s1 = 1 if player1_win else 0
-        s2 = 0 if player1_win else 1
-        new_rating1 = rating1 + int(round(32 * (s1 - e1)))
-        new_rating2 = rating2 + int(round(32 * (s2 - e2)))
-        return new_rating1, new_rating2
+        return player.ratings.get(Hand.DOMINANT, Sport.PING_PONG), wins, losses, wl_ratio

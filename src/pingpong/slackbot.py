@@ -8,10 +8,10 @@ from typing import Optional
 
 from slack_sdk.rtm_v2 import RTMClient
 
-from pingpong import pingpong_service, responses
-from pingpong.data_classes import Sport
-from pingpong.pingpong_service import PingPongService
-from pingpong.util import BaseEnum
+from src.backend.data_classes import Hand, Sport
+from src.backend.util import BaseEnum
+from src.pingpong import pingpong_service, responses
+from src.pingpong.pingpong_service import PingPongService
 
 logging.basicConfig(level="INFO")
 log = logging.getLogger(__name__)
@@ -36,10 +36,10 @@ class KeyWord(Enum):
 
 @dataclass
 class BotCommand:
-    command_type: Optional[CommandType]
-    command_value: Optional[str]
     channel: str
     sender_id: str
+    command_type: Optional[CommandType]
+    command_value: Optional[str]
     recipient_id: Optional[str]
 
     @classmethod
@@ -49,11 +49,7 @@ class BotCommand:
         message_text = event["text"]
         recipient_id, message = cls._parse_text_as_direct_mention(message_text)
         command_type_str, command_value = cls._parse_message_as_command(message)
-        if command_type_str in CommandType:
-            command_type: Optional[CommandType] = CommandType(command_type_str)
-        else:
-            command_type = None
-        return BotCommand(command_type, command_value, channel, sender, recipient_id)
+        return BotCommand(channel, sender, CommandType.of(command_type_str), command_value, recipient_id)
 
     @staticmethod
     def _parse_text_as_direct_mention(
@@ -121,12 +117,11 @@ class PingPongSlackBot:
             self.ping_pong_service.add_new_player(bot_command.sender_id)
             return responses.new_player()
 
-        if bot_command.command_type is None or bot_command.command_value is None:
-            return responses.unkown_command()
-
-        if bot_command.command_type == CommandType.HELP:
+        if bot_command.command_type is None:
+            return responses.unknown_command()
+        elif bot_command.command_type == CommandType.HELP:
             return responses.help()
-        if bot_command.command_type == CommandType.NAME:
+        elif bot_command.command_type == CommandType.NAME:
             if bot_command.command_value:
                 success = self.ping_pong_service.update_display_name(player, bot_command.command_value.lower())
                 if success:
@@ -135,9 +130,9 @@ class PingPongSlackBot:
                     return responses.name_taken()
             else:
                 return responses.name(player.name)
-        if bot_command.command_type == CommandType.MATCH:
+        elif bot_command.command_type == CommandType.MATCH:
             return self.handle_match_command(bot_command.command_value)
-        if bot_command.command_type == CommandType.STATS:
+        elif bot_command.command_type == CommandType.STATS:
             name = bot_command.command_value
             if name:
                 try:
@@ -149,9 +144,10 @@ class PingPongSlackBot:
                 return responses.stats(
                     self.ping_pong_service.get_total_matches(), self.ping_pong_service.get_leaderboard()
                 )
-        # if bot_command.command_type == CommandType.UNDO:
-        #     w_name, w_rating, l_name, l_rating = pingpong_service.undo_last_match()
-        #     return responses.match_undone(w_name, w_rating, l_name, l_rating)
+        if bot_command.command_type == CommandType.UNDO:
+            return responses.unknown_command()
+            # w_name, w_rating, l_name, l_rating = pingpong_service.undo_last_match()
+            # return responses.match_undone(w_name, w_rating, l_name, l_rating)
         raise RuntimeError("illegal state")
 
     def handle_match_command(self, match_string: str) -> str:
@@ -167,20 +163,22 @@ class PingPongSlackBot:
             parsed_match_string.group(7),
         )
         try:
+            p1_hand = Hand.NON_DOMINANT if nondom1 == KeyWord.NON_DOMINANT.value else Hand.DOMINANT
+            p2_hand = Hand.NON_DOMINANT if nondom2 == KeyWord.NON_DOMINANT.value else Hand.DOMINANT
             p1, p1_rating_diff, p2, p2_rating_diff = self.ping_pong_service.add_match(
                 player1_id,
-                nondom1 == KeyWord.NON_DOMINANT,
+                p1_hand,
                 player2_id,
-                nondom2 == KeyWord.NON_DOMINANT,
+                p2_hand,
                 int(score1),
                 int(score2),
             )
             return responses.match_added(
                 p1.name,
-                p1.get_rating(Sport.PING_PONG),
+                p1.ratings.get(p1_hand, Sport.PING_PONG),
                 ("+" if p1_rating_diff >= 0 else "") + str(p1_rating_diff),
                 p2.name,
-                p2.get_rating(Sport.PING_PONG),
+                p2.ratings.get(p2_hand, Sport.PING_PONG),
                 ("+" if p2_rating_diff >= 0 else "") + str(p2_rating_diff),
             )
         except pingpong_service.PlayerDoesNotExist:

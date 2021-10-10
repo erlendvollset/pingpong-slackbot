@@ -22,7 +22,7 @@ repos:
 -   hooks:
       -   id: mypy
           name: mypy
-          entry: dmypy run -- pingpong
+          entry: dmypy run -- src
           language: system
           pass_filenames: false
     repo: local

@@ -61,13 +61,12 @@ def match_added(p1: str, p1rating: int, p1diff: str, p2: str, p2rating: int, p2d
     messages = [
         "Okay, I added the result!",
         "Mmmmmm! Matches!",
-        "Congratulations, {}! You're now a few points closer to not sucking.".format(winner_name),
-        "Wow... You need to step your game up, {}.".format(loser_name),
+        f"Congratulations, {winner_name}! You're now a few points closer to not sucking.",
+        f"Wow... You need to step your game up, {loser_name}.",
         "That was fun. But you know what would be even more fun? A FIGHT TO THE DEATH!!!",
-        "That's pretty impressive, {}. Or it _would_ be if you weren't always picking such useless "
-        "opponents.".format(winner_name),
-        "Haha, {}... My grandmother plays ping pong better than that, and she's a GPU overclocking software "
-        "meaning she has no arms, legs, eyes, or physical manifestation.".format(loser_name),
+        f"That's pretty impressive, {winner_name}. Or it _would_ be if you weren't always picking such useless opponents.",
+        f"Haha, {loser_name}... My grandmother plays ping pong better than that, and she's a GPU overclocking software "
+        "meaning she has no arms, legs, eyes, or physical manifestation.",
     ]
     message = random.choice(messages)
 
@@ -117,5 +116,5 @@ def stats(total_matches: int, leaderboard: str) -> str:
     return "Total Matches played: {}\n{}".format(total_matches, leaderboard)
 
 
-def unkown_command() -> str:
+def unknown_command() -> str:
     return "Not sure what you mean. Try `help`."
