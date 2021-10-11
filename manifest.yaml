@@ -24,9 +24,9 @@ spec:
           - name: COGNITE_CLIENT_NAME
             value: pingpong-slackbot
           - name: COGNITE_PROJECT 
-            value: python-sdk-test 
+            value: erlendvollset
           - name: COGNITE_BASE_URL
-            value: https://greenfield.cognitedata.com 
+            value: https://api.cognitedata.com
         image: eu.gcr.io/cognitedata-development/pingpong-slackbot:666
         name: ping-pong-bot
         resources:
