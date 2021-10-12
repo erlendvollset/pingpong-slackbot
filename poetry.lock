@@ -322,6 +322,19 @@ optional = ["aiodns (>1.0)", "aiohttp (>=3.7.3,<4)", "boto3 (<=2)", "SQLAlchemy 
 testing = ["pytest (>=5.4,<6)", "pytest-asyncio (<1)", "Flask-Sockets (>=0.2,<1)", "Flask (>=1,<2)", "Werkzeug (<2)", "pytest-cov (>=2,<3)", "codecov (>=2,<3)", "flake8 (>=3,<4)", "black (==21.9b0)", "psutil (>=5,<6)", "databases (>=0.3)", "boto3 (<=2)", "moto (<2)"]
 
 [[package]]
+name = "structlog"
+version = "21.2.0"
+description = "Structured Logging for Python"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+dev = ["coverage", "freezegun (>=0.2.8)", "pretend", "pytest-asyncio", "pytest (>=6.0)", "simplejson", "furo", "sphinx", "twisted", "pre-commit", "rich"]
+docs = ["furo", "sphinx", "twisted"]
+tests = ["coverage", "freezegun (>=0.2.8)", "pretend", "pytest-asyncio", "pytest (>=6.0)", "simplejson"]
+
+[[package]]
 name = "tenacity"
 version = "8.0.1"
 description = "Retry code until it succeeds"
@@ -383,7 +396,7 @@ testing = ["coverage (>=4)", "coverage-enable-subprocess (>=1)", "flaky (>=3)", 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "06459a591785ef9585a4bca0f830fbc921bd539e7a548b97fd8ebff21d6a38f8"
+content-hash = "8e89a832a6fd63fe99ff0018a1b0b75f3fd2267871e4807ece34002f59d85e81"
 
 [metadata.files]
 atomicwrites = [
@@ -550,6 +563,10 @@ six = [
 slack-sdk = [
     {file = "slack_sdk-3.11.2-py2.py3-none-any.whl", hash = "sha256:35245ec34c8549fbb5c43ccc17101afd725b3508bb784da46530b214f496bf93"},
     {file = "slack_sdk-3.11.2.tar.gz", hash = "sha256:131bf605894525c2d66da064677eabc19f53f02ce0f82a3f2fa130d4ec3bc1b0"},
+]
+structlog = [
+    {file = "structlog-21.2.0-py2.py3-none-any.whl", hash = "sha256:63a7111a32e5b615671536bb745692ea02cebfea2b39dcb7d2617eed19437cfe"},
+    {file = "structlog-21.2.0.tar.gz", hash = "sha256:7ac42b565e1295712313f91edbcb64e0840a9037d888c8954f11fa6c43270e99"},
 ]
 tenacity = [
     {file = "tenacity-8.0.1-py3-none-any.whl", hash = "sha256:f78f4ea81b0fabc06728c11dc2a8c01277bfc5181b321a4770471902e3eb844a"},

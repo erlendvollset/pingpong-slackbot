@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
-from typing import Optional
+from typing import Optional, Any
 
+import structlog
 from slack_sdk.rtm_v2 import RTMClient
 
 from src.backend.data_classes import Hand, Sport
@@ -13,10 +13,9 @@ from src.backend.util import BaseEnum
 from src.pingpong import pingpong_service, responses
 from src.pingpong.pingpong_service import PingPongService
 
-logging.basicConfig(level="INFO")
-log = logging.getLogger(__name__)
+log = structlog.getLogger(__name__)
 
-PLAYER_REGEX = "<@([A-Z0-9]{9})>"
+PLAYER_REGEX = "<@([A-Z0-9]+)>"
 MATCH_REGEX = f"^{PLAYER_REGEX}\s+((?:nd\s+)?){PLAYER_REGEX}\s+((?:nd\s+)?)(\d+)(\s+|-)(\d+)"
 MENTION_REGEX = f"^{PLAYER_REGEX}(.*)"
 COMMAND_REGEX = "([a-zA-Z]*)(\s+.*)?"
@@ -88,26 +87,31 @@ class PingPongSlackBot:
 
         info = self.rtm_client.web_client.rtm_connect()
         self.ping_pong_bot_id = info["self"]["id"]
-        self.rtm_client.on("message")(lambda client, event: self.handle(client, event))
+        self.rtm_client.on("message")(lambda client, event: self._handle(client, event))
 
     def start(self) -> None:
         log.info("Starting pingpong bot")
         self.rtm_client.start()
 
-    def handle(self, client: RTMClient, event: dict) -> None:
+    @staticmethod
+    def _event_info_to_log(event: dict[str, any]) -> dict[str, Any]:
+        essential_keys = {"user", "text", "team", "source_team", "user_team", "channel", "event_ts", "ts"}
+        return {key: event.get(key) for key in essential_keys}
+
+    def _handle(self, client: RTMClient, event: dict) -> None:
         if event["type"] != "message":
             return
-
+        log.info("Received slack event", **self._event_info_to_log(event))
         bot_command = BotCommand.from_slack_event(event)
         if bot_command.recipient_id != self.ping_pong_bot_id:
             return
         if bot_command.channel not in self.answer_in_channels:
             return
 
-        response = self.handle_bot_command(bot_command)
+        response = self._handle_bot_command(bot_command)
         client.web_client.chat_postMessage(channel=bot_command.channel, text=response)
 
-    def handle_bot_command(self, bot_command: BotCommand) -> str:
+    def _handle_bot_command(self, bot_command: BotCommand) -> str:
         """
         Executes bot command if the command is known
         """
@@ -131,7 +135,7 @@ class PingPongSlackBot:
             else:
                 return responses.name(player.name)
         elif bot_command.command_type == CommandType.MATCH:
-            return self.handle_match_command(bot_command.command_value)
+            return self._handle_match_command(bot_command.command_value)
         elif bot_command.command_type == CommandType.STATS:
             name = bot_command.command_value
             if name:
@@ -150,7 +154,7 @@ class PingPongSlackBot:
             # return responses.match_undone(w_name, w_rating, l_name, l_rating)
         return responses.unknown_command()
 
-    def handle_match_command(self, match_string: Optional[str]) -> str:
+    def _handle_match_command(self, match_string: Optional[str]) -> str:
         if match_string is None:
             return responses.invalid_match_command()
         parsed_match_string = re.match(MATCH_REGEX, match_string)

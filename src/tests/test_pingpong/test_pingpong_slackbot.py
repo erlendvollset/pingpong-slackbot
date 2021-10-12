@@ -13,7 +13,6 @@ from src.pingpong import responses
 from src.pingpong.pingpong_service import PingPongService
 from src.pingpong.slackbot import BotCommand, CommandType, PingPongSlackBot
 
-# all ids must have 9 upper case characters
 PINGPONG_BOT_ID = "TESTTESTB"
 USER_ID = "TESTTESTU"
 CHANNEL_ID = "TESTTESTC"
@@ -45,6 +44,10 @@ def text_to_slack_event(text: str) -> dict[str, Any]:
         (
             text_to_slack_event("<@OTHER1234> match <@KD839FK38> <@9FJ48GJF8> 11 0"),
             BotCommand(CHANNEL_ID, USER_ID, CommandType.MATCH, "<@KD839FK38> <@9FJ48GJF8> 11 0", "OTHER1234"),
+        ),
+        (
+            text_to_slack_event("<@OTHERLONGERID123> match <@KD839FK38> <@9FJ48GJF8> 11 0"),
+            BotCommand(CHANNEL_ID, USER_ID, CommandType.MATCH, "<@KD839FK38> <@9FJ48GJF8> 11 0", "OTHERLONGERID123"),
         ),
         (
             text_to_slack_event(f"<@{PINGPONG_BOT_ID}> stats"),

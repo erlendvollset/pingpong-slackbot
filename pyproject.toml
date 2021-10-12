@@ -23,6 +23,7 @@ addopts = "--doctest-modules --ignore=bulk-import.py"
 python = "^3.10"
 slack-sdk = "^3.11.2"
 cognite-sdk-core = "^2.32.0"
+structlog = "^21.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
