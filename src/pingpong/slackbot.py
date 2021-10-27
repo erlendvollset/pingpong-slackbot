@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Any
+from typing import Any, Optional
 
 import structlog
 from slack_sdk.rtm_v2 import RTMClient
@@ -94,7 +94,7 @@ class PingPongSlackBot:
         self.rtm_client.start()
 
     @staticmethod
-    def _event_info_to_log(event: dict[str, any]) -> dict[str, Any]:
+    def _event_info_to_log(event: dict[str, Any]) -> dict[str, Any]:
         essential_keys = {"user", "text", "team", "source_team", "user_team", "channel", "event_ts", "ts"}
         return {key: event.get(key) for key in essential_keys}
 

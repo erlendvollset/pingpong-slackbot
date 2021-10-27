@@ -16,11 +16,13 @@ ADMIN_CHANNEL_ID = "C02H9J7BP97"
 ERLEND_ADMIN_CHANNEL_ID = "D8J3CN9DX"
 SLACK_BOT_TOKEN = os.environ["SLACK_BOT_TOKEN"]
 
+
 def answer_channels() -> set[str]:
     res = os.getenv("ANSWER_IN_CHANNELS")
     if res:
         return set(channel.strip() for channel in res.split(","))
     return {PINGPONG_CHANNEL_ID, ADMIN_CHANNEL_ID, ERLEND_ADMIN_CHANNEL_ID}
+
 
 def main() -> None:
     cdf_backend = BackendCdf(root_asset_external_id=ROOT_ASSET_EXTERNAL_ID, cognite_client=CogniteClient())

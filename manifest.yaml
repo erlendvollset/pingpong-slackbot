@@ -27,7 +27,7 @@ spec:
             value: erlendvollset
           - name: COGNITE_BASE_URL
             value: https://api.cognitedata.com
-        image: eu.gcr.io/cognitedata-development/pingpong-slackbot:671
+        image: eu.gcr.io/cognitedata-development/pingpong-slackbot:672
         name: ping-pong-bot
         resources:
           limits:
