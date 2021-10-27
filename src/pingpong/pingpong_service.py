@@ -74,50 +74,49 @@ class PingPongService:
         return updated_players
 
     def undo_last_match(self) -> tuple[Optional[str], Optional[int], Optional[str], Optional[int]]:
-        matches = self._backend.list_matches(sport=Sport.PING_PONG)
-
-        if not matches or True:  # Todo: fix undo
-            return None, None, None, None
-
-        latest_match = matches[0]
-
-        if latest_match.player1_score > latest_match.player2_score:
-            winner = self.get_player(player_id=latest_match.player1_id)
-            winner_prev_rating = latest_match.player1_rating
-            loser = self.get_player(player_id=latest_match.player2_id)
-            loser_prev_rating = latest_match.player2_rating
-        else:
-            winner = self.get_player(player_id=latest_match.player2_id)
-            winner_prev_rating = latest_match.player2_rating
-            loser = self.get_player(player_id=latest_match.player1_id)
-            loser_prev_rating = latest_match.player1_rating
-
-        # CDF_BACKEND.delete_matches(ids=[latest_match.id])
-        self._backend.update_player(winner.id, sport=Sport.PING_PONG, new_rating=winner_prev_rating)
-        self._backend.update_player(loser.id, sport=Sport.PING_PONG, new_rating=loser_prev_rating)
-        return winner.name, winner_prev_rating, loser.name, loser_prev_rating
+        ...
+        # matches = self._backend.list_matches(sport=Sport.PING_PONG)
+        #
+        # if not matches or True:  # Todo: fix undo
+        #     return None, None, None, None
+        #
+        # latest_match = matches[0]
+        #
+        # if latest_match.player1_score > latest_match.player2_score:
+        #     winner = self.get_player(player_id=latest_match.player1_id)
+        #     winner_prev_rating = latest_match.player1_rating
+        #     loser = self.get_player(player_id=latest_match.player2_id)
+        #     loser_prev_rating = latest_match.player2_rating
+        # else:
+        #     winner = self.get_player(player_id=latest_match.player2_id)
+        #     winner_prev_rating = latest_match.player2_rating
+        #     loser = self.get_player(player_id=latest_match.player1_id)
+        #     loser_prev_rating = latest_match.player1_rating
+        #
+        # # CDF_BACKEND.delete_matches(ids=[latest_match.id])
+        # self._backend.update_player(winner.id, sport=Sport.PING_PONG, new_rating=winner_prev_rating)
+        # self._backend.update_player(loser.id, sport=Sport.PING_PONG, new_rating=loser_prev_rating)
+        # return winner.name, winner_prev_rating, loser.name, loser_prev_rating
 
     def get_leaderboard(self) -> str:
-        players = self._backend.list_players()
-        matches = self._backend.list_matches(sport=Sport.PING_PONG)
-        active_players = [p for p in players if self.__has_played_match(matches, p)]
-        active_players = sorted(
-            active_players, key=lambda p: p.ratings.get(Hand.DOMINANT, Sport.PING_PONG), reverse=True
-        )
+        id_to_player = {p.id: p for p in self._backend.list_players()}
+        names_and_ratings: set[tuple[str, int]] = set()
+        for match in self._backend.list_matches(sport=Sport.PING_PONG):
+            names_and_ratings.add(self.__to_name_and_rating(id_to_player[match.player1_id], match.player1_hand))
+            names_and_ratings.add(self.__to_name_and_rating(id_to_player[match.player2_id], match.player2_hand))
+
+        sorted_names_and_ratings = sorted(list(names_and_ratings), key=lambda p: p[1], reverse=True)
         printable_leaderboard = "\n".join(
-            [
-                "{}. {} ({})".format(i + 1, p.name, p.ratings.get(Hand.DOMINANT, Sport.PING_PONG))
-                for i, p in enumerate(active_players)
-            ]
+            [f"{str(i+1)+'.':4}{name} ({rating})" for i, (name, rating) in enumerate(sorted_names_and_ratings)]
         )
         return printable_leaderboard
 
     @staticmethod
-    def __has_played_match(matches: list[Match], player: Player) -> bool:
-        for match in matches:
-            if match.player1_id == player.id or match.player2_id == player.id:
-                return True
-        return False
+    def __to_name_and_rating(player: Player, hand: Hand) -> tuple[str, int]:
+        name = player.name
+        if hand == Hand.NON_DOMINANT:
+            name += "(nd)"
+        return (name, player.ratings.get(hand, Sport.PING_PONG))
 
     def get_total_matches(self) -> int:
         matches = self._backend.list_matches(sport=Sport.PING_PONG)

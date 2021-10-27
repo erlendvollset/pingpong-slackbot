@@ -272,7 +272,27 @@ class TestPingPongSlackbot:
         slack_user_emulator.send_match_message(p1.id, p2.id, 50, 100)
         slack_user_emulator.send_match_message(p1.id, p2.id, 100, 50)
         response = slack_user_emulator.send_stats_message()
-        assert response == responses.stats(2, "1. erlend (1001)\n2. name3 (999)")
+        assert response == responses.stats(
+            2,
+            "1.  erlend (1001)\n2.  name3 (999)",
+        )
+
+    def test_get_stats_with_non_dominant(
+        self, slack_user_emulator: SlackUserEmulator, created_players: list[Player]
+    ) -> None:
+        p1 = created_players[0]
+        p2 = created_players[-1]
+        slack_user_emulator.send_match_message(p1.id, p2.id, 50, 100)
+        slack_user_emulator.send_match_message(p1.id, p2.id, 100, 50, nd1=True, nd2=True)
+        slack_user_emulator.send_match_message(p1.id, p2.id, 100, 50, nd1=True, nd2=True)
+        response = slack_user_emulator.send_stats_message()
+        assert response == responses.stats(
+            3,
+            """1.  erlend(nd) (1031)
+2.  name3 (1016)
+3.  erlend (984)
+4.  name3(nd) (969)""",
+        )
 
     def test_get_player_stats(self, slack_user_emulator: SlackUserEmulator, created_players: list[Player]) -> None:
         p1 = created_players[0]
