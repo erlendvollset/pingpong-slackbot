@@ -8,6 +8,8 @@ metadata:
 spec:
   replicas: 1
   revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: ping-pong-bot
@@ -27,7 +29,7 @@ spec:
             value: erlendvollset
           - name: COGNITE_BASE_URL
             value: https://api.cognitedata.com
-        image: eu.gcr.io/cognitedata-development/pingpong-slackbot:678
+        image: eu.gcr.io/cognitedata-development/pingpong-slackbot:679
         name: ping-pong-bot
         resources:
           limits:
